@@ -33,16 +33,19 @@ export default function LoginForm() {
 
     setLoading(true);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     try {
 
       const res = await fetch("/api/auth/login", {
 
         method: "POST",
-
+        credentials: "same-origin",
+        signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify(form),
 
       });
@@ -50,21 +53,23 @@ export default function LoginForm() {
       const json = await res.json();
 
       if (json.success) {
-  alert("Login Successful!");
+        alert("Login Successful!");
+        window.location.href = "/dashboard";
+        return;
+      } else {
+        alert(json.message);
+      }
+    } catch (error) {
 
-  window.location.replace("/dashboard");
+      console.error("Login request failed:", error);
+      alert(error instanceof DOMException && error.name === "AbortError"
+        ? "Login request timed out. Please try again."
+        : "Login Failed");
 
-  return;
-} else {
-  alert(json.message);
-}
-    } catch {
-
-      alert("Login Failed");
-
+    } finally {
+      clearTimeout(timeoutId);
+      setLoading(false);
     }
-
-    setLoading(false);
 
   }
 

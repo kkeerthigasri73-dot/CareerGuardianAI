@@ -10,7 +10,10 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
-    const { name, email, password, college } = body;
+    const name = String(body.name ?? "").trim();
+    const email = String(body.email ?? "").trim().toLowerCase();
+    const password = String(body.password ?? "");
+    const college = String(body.college ?? "").trim();
 
     if (!name || !email || !password) {
       return NextResponse.json(

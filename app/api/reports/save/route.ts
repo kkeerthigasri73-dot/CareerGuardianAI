@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 
+import { JWT_SECRET } from "@/lib/auth";
 import connectDB from "../../../../lib/mongodb";
 import Report from "../../../../models/Report";
-
-const JWT_SECRET =
-  process.env.JWT_SECRET || "careerguardian_ai_super_secret_2026";
 
 export async function POST(req: NextRequest) {
   try {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ProgressCards from "@/components/dashboard/ProgressCards";
@@ -13,9 +13,13 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   const [dashboard, setDashboard] = useState<any>(null);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
 
+    if (hasLoadedRef.current) return;
+
+    hasLoadedRef.current = true;
     loadDashboard();
 
   }, []);
@@ -24,7 +28,18 @@ export default function DashboardPage() {
 
     try {
 
-      const response = await fetch("/api/dashboard");
+      const response = await fetch("/api/dashboard", {
+        credentials: "same-origin",
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        throw new Error("Your session has expired. Please log in again.");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Dashboard request failed: ${response.status}`);
+      }
 
       const result = await response.json();
 
@@ -50,13 +65,25 @@ export default function DashboardPage() {
 
     return (
 
-      <main className="flex min-h-screen items-center justify-center">
+      <main className="flex min-h-screen items-center justify-center bg-slate-100">
 
-        <h1 className="text-3xl font-bold">
+        <div className="text-center">
 
-          Loading Guardian Dashboard...
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
 
-        </h1>
+          <h1 className="text-3xl font-bold text-slate-900">
+
+            Loading Guardian Dashboard...
+
+          </h1>
+
+          <p className="mt-3 text-slate-600">
+
+            Verifying your secure session.
+
+          </p>
+
+        </div>
 
       </main>
 

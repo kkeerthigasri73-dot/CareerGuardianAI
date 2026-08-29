@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "careerguardian_secret";
+export const JWT_SECRET =
+  process.env.JWT_SECRET || "careerguardian_ai_super_secret_2026";
 
 export function generateToken(user: {
   id: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ShieldCheck,
   AlertTriangle,
@@ -16,8 +16,12 @@ interface Investigation {
 
 export default function InvestigationTable() {
   const [investigations, setInvestigations] = useState<Investigation[]>([]);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+
     fetch("/api/dashboard")
       .then((res) => res.json())
       .then((data) => {

@@ -39,34 +39,34 @@ export default function UserMenu() {
       document.removeEventListener("mousedown", handleClick);
   }, []);
 
- async function loadProfile() {
-  try {
-    const res = await fetch("/api/profile");
+  async function loadProfile() {
+    try {
+      const res = await fetch("/api/profile", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
 
-    console.log("Status:", res.status);
+      if (res.status === 401 || res.status === 403) {
+        setUser(null);
+        return;
+      }
 
-    const text = await res.text();
+      if (!res.ok) {
+        throw new Error(`Profile request failed with status ${res.status}`);
+      }
 
-    console.log("Response:", text);
+      const json = await res.json();
 
-    if (!res.ok) {
+      if (json.success) {
+        setUser(json.user);
+      } else {
+        setUser(null);
+      }
+    } catch (err) {
+      console.warn("Profile fetch skipped because user is not authenticated.");
       setUser(null);
-      return;
     }
-
-    const json = JSON.parse(text);
-
-    if (json.success) {
-      setUser(json.user);
-    } else {
-      setUser(null);
-    }
-
-  } catch (err) {
-    console.error(err);
-    setUser(null);
   }
-}
   async function logout() {
     try {
       await fetch("/api/auth/logout", {
