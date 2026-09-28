@@ -7,7 +7,19 @@ import { generateToken } from "../../../../lib/auth";
 
 export async function POST(req: Request) {
   try {
-    await connectDB();
+    const db = await connectDB();
+
+    if (!db) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Database is temporarily unavailable. Please try again later.",
+        },
+        {
+          status: 503,
+        }
+      );
+    }
 
     const body = await req.json();
 
@@ -65,7 +77,7 @@ export async function POST(req: Request) {
       success: true,
       message: "Login Successful",
       user: {
-        id: user._id,
+        id: user._id.toString(),
         name: user.name,
         email: user.email,
         college: user.college,

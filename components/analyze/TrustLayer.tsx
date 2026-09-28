@@ -18,7 +18,15 @@ export default function TrustLayer({
   message,
 }: TrustLayerProps) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className={`rounded-2xl border p-5 shadow-sm transition-all duration-500 ${
+      status === "running"
+        ? "border-cyan-300 bg-cyan-50 shadow-[0_0_24px_rgba(34,211,238,0.16)]"
+        : status === "completed"
+        ? passed
+          ? "border-emerald-200 bg-emerald-50/80"
+          : "border-red-200 bg-red-50/80"
+        : "border-slate-200 bg-white/80"
+    }`}>
 
       <div className="flex items-center justify-between">
 
@@ -32,20 +40,22 @@ export default function TrustLayer({
             ))}
 
           {status === "running" && (
-            <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-600 text-white shadow-lg shadow-cyan-600/25">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </span>
           )}
 
           {status === "pending" && (
             <div className="h-7 w-7 rounded-full border-2 border-slate-300" />
           )}
 
-          <div>
+          <div className="min-w-0">
 
-            <h3 className="font-semibold">
+            <h3 className="font-semibold text-slate-900">
               {title}
             </h3>
 
-            <p className="text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-500">
               {status === "completed"
                 ? message
                 : description}
@@ -68,7 +78,7 @@ export default function TrustLayer({
         )}
 
         {status === "running" && (
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">
+          <span className="rounded-full bg-cyan-600 px-3 py-1 text-sm font-semibold text-white shadow-sm">
             Running
           </span>
         )}

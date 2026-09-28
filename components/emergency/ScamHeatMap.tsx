@@ -149,11 +149,18 @@ export default function ScamHeatMap() {
 
       <div className="mt-12 text-center">
 
-        <button className="rounded-2xl bg-red-600 px-10 py-4 text-lg font-semibold text-white transition hover:bg-red-700">
-
-          🚨 Report Scam Near Me
-
-        </button>
+        <button
+  onClick={() => {
+    document
+      .getElementById("report-scam")
+      ?.scrollIntoView({
+        behavior: "smooth",
+      });
+  }}
+  className="rounded-2xl bg-red-600 px-10 py-4 text-lg font-semibold text-white transition hover:bg-red-700"
+>
+  🚨 Report Scam
+</button>
 
       </div>
 

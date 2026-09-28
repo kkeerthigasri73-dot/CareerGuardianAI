@@ -5,8 +5,14 @@ import { verifyEmail } from "@/lib/live/email";
 import { verifyHTTPS } from "@/lib/live/https";
 import { verifyGovernment } from "@/lib/live/government";
 import { detectScam } from "@/lib/live/scam";
+
 import connectDB from "@/lib/mongodb";
+
 import Verification from "@/models/Verification";
+import User from "@/models/User";
+
+import { calculateBadges } from "@/lib/badges";
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -22,11 +28,15 @@ export async function POST(req: Request) {
       education,
       jobRole,
       description,
+      userId,
     } = body;
 
     const layers: any[] = [];
 
-    // Layer 1 - OCR
+    // =========================
+    // LAYER 1 - OCR EXTRACTION
+    // =========================
+
     layers.push({
       layer: 1,
       title: "OCR Extraction",
@@ -37,22 +47,45 @@ export async function POST(req: Request) {
         : "OCR extraction failed.",
     });
 
-    // Layer 2 - Government Verification
+    // ==================================
+    // LAYER 2 - ORGANIZATION VERIFICATION
+    // ==================================
+
     const government = verifyGovernment(
       company || "",
       notificationNumber || ""
     );
 
+    const isPrivateRecruitment =
+      government.message
+        .toLowerCase()
+        .includes("private");
+
     layers.push({
       layer: 2,
-      title: "Government Verification",
-      passed: government.passed,
-      score: government.score,
-      message: government.message,
+      title: "Organization Verification",
+      passed:
+        government.passed ||
+        isPrivateRecruitment,
+      score: government.passed
+        ? government.score
+        : isPrivateRecruitment
+        ? 5
+        : 0,
+      message: government.passed
+        ? government.message
+        : isPrivateRecruitment
+        ? "Private Company Recruitment"
+        : government.message,
     });
 
-    // Layer 3 - Domain Verification
-    const domain = await verifyDomain(website || "");
+    // ==============================
+    // LAYER 3 - WEBSITE VERIFICATION
+    // ==============================
+
+    const domain = await verifyDomain(
+      website || ""
+    );
 
     layers.push({
       layer: 3,
@@ -60,11 +93,15 @@ export async function POST(req: Request) {
       passed: domain.passed,
       score: domain.score,
       message: domain.message,
-      
     });
 
-    // Layer 4 - Email Verification
-    const emailResult = verifyEmail(email || "");
+    // ============================
+    // LAYER 4 - EMAIL VERIFICATION
+    // ============================
+
+    const emailResult = verifyEmail(
+      email || ""
+    );
 
     layers.push({
       layer: 4,
@@ -74,10 +111,23 @@ export async function POST(req: Request) {
       message: emailResult.message,
     });
 
-    // Layer 5 - Phone Verification
-    const phoneValid = /^[6-9]\d{9}$/.test(
-      (phone || "").replace(/\D/g, "")
-    );
+    // ============================
+    // LAYER 5 - PHONE VERIFICATION
+    // ============================
+
+    const cleanedPhone = (phone || "")
+      .replace(/[^\d+]/g, "")
+      .replace(/^\+91/, "")
+      .replace(/^91/, "");
+
+    const isMobile =
+      /^[6-9]\d{9}$/.test(cleanedPhone);
+
+    const isLandline =
+      /^\d{10,11}$/.test(cleanedPhone);
+
+    const phoneValid =
+      isMobile || isLandline;
 
     layers.push({
       layer: 5,
@@ -85,42 +135,69 @@ export async function POST(req: Request) {
       passed: phoneValid,
       score: phoneValid ? 10 : 0,
       message: phoneValid
-        ? "Valid Indian phone number."
+        ? isMobile
+          ? "Valid Indian Mobile Number"
+          : "Valid Office Contact Number"
         : phone
-  ? "Verified Phone Number"
-  : "Official Phone Not Mentioned"
+        ? "Contact Number Requires Review"
+        : "Official Phone Not Mentioned",
     });
 
-    // Layer 6 - Salary Analysis
-   const salaryText = salary || "";
+    // ===========================
+    // LAYER 6 - SALARY ANALYSIS
+    // ===========================
 
-const salaryValues = salaryText.match(/\d[\d,]*/g);
+    const salaryText =
+      (salary || "").trim();
 
-let realisticSalary = false;
+    const salaryValues =
+      salaryText.match(/\d[\d,]*/g);
 
-if (salaryValues && salaryValues.length > 0) {
+    if (
+      !salaryText ||
+      !salaryValues ||
+      salaryValues.length === 0
+    ) {
+      layers.push({
+        layer: 6,
+        title: "Salary Analysis",
+        passed: true,
+        score: 5,
+        message:
+          "Salary Not Mentioned — No Risk Detected",
+      });
+    } else {
+      const firstSalary = Number(
+        salaryValues[0].replace(
+          /,/g,
+          ""
+        )
+      );
 
-  const firstSalary = Number(
-    salaryValues[0].replace(/,/g, "")
-  );
+      const realisticSalary =
+        firstSalary >= 10000 &&
+        firstSalary <= 300000;
 
-  realisticSalary =
-    firstSalary >= 10000 &&
-    firstSalary <= 300000;
+      layers.push({
+        layer: 6,
+        title: "Salary Analysis",
+        passed: realisticSalary,
+        score: realisticSalary
+          ? 10
+          : 0,
+        message: realisticSalary
+          ? "Salary Range Appears Reasonable"
+          : "Salary Requires Review",
+      });
+    }
 
-}
-    layers.push({
-      layer: 6,
-      title: "Salary Analysis",
-      passed: realisticSalary,
-      score: realisticSalary ? 10 : 0,
-      message: realisticSalary
-  ? "Government Salary Range"
-  : "Salary Requires Review",
-    });
+    // ==============================
+    // LAYER 7 - SCAM KEYWORD CHECK
+    // ==============================
 
-    // Layer 7 - Scam Detection
-    const scam = detectScam(description || "");
+    const scam = detectScam(
+      description || ""
+    );
 
     layers.push({
       layer: 7,
@@ -130,8 +207,13 @@ if (salaryValues && salaryValues.length > 0) {
       message: scam.message,
     });
 
-    // Layer 8 - HTTPS
-    const https = verifyHTTPS(website || "");
+    // =========================
+    // LAYER 8 - HTTPS SECURITY
+    // =========================
+
+    const https = verifyHTTPS(
+      website || ""
+    );
 
     layers.push({
       layer: 8,
@@ -141,49 +223,66 @@ if (salaryValues && salaryValues.length > 0) {
       message: https.message,
     });
 
-    // Layer 9 - Application Fee
+    // ==========================
+    // LAYER 9 - APPLICATION FEE
+    // ==========================
+
     const feeAmount = Number(
-  (applicationFee || "").replace(/[^\d]/g, "")
-);
+      (applicationFee || "").replace(
+        /[^\d]/g,
+        ""
+      )
+    );
 
-const governmentFee =
-  feeAmount === 0 ||
-  feeAmount <= 1000;
+    const feeAcceptable =
+      feeAmount === 0 ||
+      feeAmount <= 1000;
 
-layers.push({
-  layer: 9,
-  title: "Application Fee",
+    layers.push({
+      layer: 9,
+      title: "Application Fee",
+      passed: feeAcceptable,
+      score: feeAcceptable ? 10 : 0,
+      message: applicationFee
+        ? `Application Fee ₹${feeAmount}`
+        : "No Fee Mentioned",
+    });
 
-  passed: governmentFee,
+    // ===========================
+    // LAYER 10 - EDUCATION CHECK
+    // ===========================
 
-  score: governmentFee ? 10 : 0,
-
-  message:
-    applicationFee
-      ? `Official Fee ₹${feeAmount}`
-      : "No Fee Mentioned",
-});
-    // Layer 10 - Education
     layers.push({
       layer: 10,
       title: "Education Verification",
       passed: !!education,
       score: education ? 5 : 0,
-      message: education || "Education not found.",
+      message:
+        education ||
+        "Education not found.",
     });
 
-    // Layer 11 - Job Role
+    // ==========================
+    // LAYER 11 - JOB ROLE CHECK
+    // ==========================
+
     layers.push({
       layer: 11,
       title: "Job Role Verification",
       passed: !!jobRole,
       score: jobRole ? 5 : 0,
-      message: jobRole || "Job role not found.",
+      message:
+        jobRole ||
+        "Job role not found.",
     });
 
-    // Layer 12 - Trust Score
+    // ======================
+    // CALCULATE TRUST SCORE
+    // ======================
+
     const totalScore = layers.reduce(
-      (sum, layer) => sum + layer.score,
+      (sum, layer) =>
+        sum + Number(layer.score || 0),
       0
     );
 
@@ -200,6 +299,10 @@ layers.push({
       verdict = "SUSPICIOUS";
     }
 
+    // ==========================
+    // LAYER 12 - FINAL AI SCORE
+    // ==========================
+
     layers.push({
       layer: 12,
       title: "AI Final Trust Score",
@@ -207,39 +310,107 @@ layers.push({
       score: trustScore,
       message: `${trustScore}% Trust Score`,
     });
+
+    // ====================
+    // CONNECT DATABASE
+    // ====================
+
     await connectDB();
 
+    // ==========================
+    // SAVE VERIFICATION RECORD
+    // ==========================
+
     await Verification.create({
-      userId: "demo-user",
+      userId: userId || "demo-user",
+
       company: company || "",
+
       jobRole: jobRole || "",
+
       trustScore,
+
       status: verdict,
+
       layers,
+
       website: website || "",
+
       email: email || "",
+
       phone: phone || "",
+
       salary: salary || "",
-      notificationNumber: notificationNumber || "",
-      applicationFee: applicationFee || "",
-      education: education || "",
-      description: description || "",
+
+      notificationNumber:
+        notificationNumber || "",
+
+      applicationFee:
+        applicationFee || "",
+
+      education:
+        education || "",
+
+      description:
+        description || "",
     });
+
+    // ==========================
+    // UPDATE USER BADGES
+    // ==========================
+
+    let unlockedBadges: string[] = [];
+
+    if (userId) {
+      const user =
+        await User.findById(userId);
+
+      if (user) {
+        // Increase completed verification count
+        user.verificationCount =
+          Number(
+            user.verificationCount || 0
+          ) + 1;
+
+        // Calculate earned badges
+        unlockedBadges =
+          calculateBadges(user);
+
+        // Save badges
+        user.badges =
+          unlockedBadges;
+
+        await user.save();
+      }
+    }
+
+    // =====================
+    // RETURN FINAL RESULT
+    // =====================
 
     return NextResponse.json({
       success: true,
+
       trustScore,
+
       verdict,
+
       layers,
+
+      unlockedBadges,
     });
 
   } catch (error) {
-    console.error("Verification Error:", error);
+    console.error(
+      "Verification Error:",
+      error
+    );
 
     return NextResponse.json(
       {
         success: false,
-        message: "Verification failed.",
+        message:
+          "Verification failed.",
       },
       {
         status: 500,

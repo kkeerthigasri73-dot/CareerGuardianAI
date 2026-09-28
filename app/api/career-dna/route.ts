@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import connectDB from "@/lib/mongodb";
 import CareerDNA from "@/models/CareerDNA";
+import { verifyToken } from "@/lib/auth";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY!,
@@ -20,6 +21,8 @@ export async function POST(req: NextRequest) {
       verifiedJob,
 
       student,
+
+      jobPreferences,
 
     } = body;
 
@@ -108,7 +111,7 @@ No explanation.
     const completion =
       await groq.chat.completions.create({
 
-        model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
 
         temperature: 0.2,
 
@@ -202,13 +205,26 @@ No explanation.
       };
           const careerDNA = await CareerDNA.create({
 
-      userId: student.email || "demo-user",
+      userId: (() => {
+        const token = req.cookies.get("token")?.value;
+        const decoded = token ? verifyToken(token) as { id?: string } | null : null;
+        return decoded?.id || student.email || "demo-user";
+      })(),
 
       verifiedJob,
 
       student,
 
       report: result,
+
+      jobPreferences: {
+        roles: jobPreferences?.roles || [],
+        skills: jobPreferences?.skills || [],
+        locations: jobPreferences?.locations || [],
+        employmentTypes: jobPreferences?.employmentTypes || [],
+        preferredCompanies: jobPreferences?.preferredCompanies || [],
+        minimumMatchScore: Number(jobPreferences?.minimumMatchScore ?? 60),
+      },
 
     });
 

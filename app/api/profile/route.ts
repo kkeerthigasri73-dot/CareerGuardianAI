@@ -6,8 +6,6 @@ import { verifyToken } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
-    await connectDB();
-
     const token = req.cookies.get("token")?.value;
 
     if (!token) {
@@ -32,6 +30,20 @@ export async function GET(req: NextRequest) {
         },
         {
           status: 401,
+        }
+      );
+    }
+
+    const db = await connectDB();
+
+    if (!db) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Database is temporarily unavailable. Please try again later.",
+        },
+        {
+          status: 503,
         }
       );
     }

@@ -23,6 +23,7 @@ import HelpCenter from "@/components/emergency/HelpCenter";
 import EmergencyFooter from "@/components/emergency/EmergencyFooter";
 import EmergencyModeHeader from "@/components/emergency/EmergencyModeHeader";
 import EmergencyCountdown from "@/components/emergency/EmergencyCountdown";
+import ReportScam from "@/components/emergency/ReportScam";
 
 export default function EmergencyPage() {
   const [recovery, setRecovery] = useState<any>(null);
@@ -138,7 +139,10 @@ export default function EmergencyPage() {
             <FraudChecklistComp data={recovery} emergency={emergencyData} />
             <EmergencyContactsComp data={recovery} />
             <ScamHeatMapComp data={recovery} />
-            <CommunityAlertsComp data={recovery} />
+
+<ReportScam />
+
+<CommunityAlertsComp data={recovery} />
             <SuccessStoriesComp data={recovery} />
             <PreventionTipsComp data={recovery} />
             <HelpCenterComp data={recovery} />

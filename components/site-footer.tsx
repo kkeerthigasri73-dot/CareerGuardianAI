@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   ShieldCheck,
   ArrowRight,
@@ -10,12 +11,14 @@ import {
 } from "lucide-react";
 
 export function SiteFooter() {
+  const pathname = usePathname();
+
   return (
     <footer className="mt-24">
 
       {/* CTA */}
 
-      <section className="mx-auto max-w-7xl px-6">
+      {pathname !== "/" && <section className="mx-auto max-w-7xl px-6">
 
         <div className="overflow-hidden rounded-[40px] bg-gradient-to-r from-blue-700 via-indigo-700 to-cyan-600 px-10 py-20 text-center text-white shadow-2xl">
 
@@ -76,7 +79,7 @@ export function SiteFooter() {
 
         </div>
 
-      </section>
+      </section>}
 
       {/* Footer */}
 

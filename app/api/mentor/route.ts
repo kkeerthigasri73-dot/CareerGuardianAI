@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { groq } from "@/lib/groq";
+import groq  from "@/lib/groq";
 
 const mentorPrompt = `
 You are CareerGuardian AI Mentor.
@@ -38,8 +38,7 @@ export async function POST(req: Request) {
 
     const completion =
       await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
-
+        model: "openai/gpt-oss-120b",
         temperature: 0.4,
 
         messages: [

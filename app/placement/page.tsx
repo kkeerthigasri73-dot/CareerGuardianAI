@@ -24,8 +24,80 @@ export default function PlacementPage() {
           {!prediction ? (
 
             <PlacementForm
-              onPredict={setPrediction}
-            />
+  onPredict={async (result: any) => {
+    setPrediction(result);
+
+    try {
+      const userId =
+        localStorage.getItem("userId");
+
+      if (!userId) {
+        console.log(
+          "User not logged in. Placement result not saved."
+        );
+
+        return;
+      }
+
+      await fetch(
+        "/api/placement/save",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            userId,
+
+            prediction:
+              result?.prediction ||
+              result?.score ||
+              0,
+
+            readinessScore:
+              result?.readinessScore ||
+              result?.score ||
+              0,
+
+            placementProbability:
+              result?.placementProbability ||
+              result?.probability ||
+              0,
+
+            technicalScore:
+              result?.technicalScore ||
+              0,
+
+            communicationScore:
+              result?.communicationScore ||
+              0,
+
+            aptitudeScore:
+              result?.aptitudeScore ||
+              0,
+
+            skills:
+              result?.skills || [],
+
+            companies:
+              result?.companies || [],
+
+            result,
+          }),
+        }
+      );
+
+    } catch (error) {
+      console.error(
+        "Failed to save placement data:",
+        error
+      );
+    }
+  }}
+/>
 
           ) : (
 

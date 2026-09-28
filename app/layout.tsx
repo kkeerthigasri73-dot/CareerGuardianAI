@@ -4,6 +4,10 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { LanguageProvider } from "@/src/context/LanguageContext";
+import WelcomeLoader from "@/components/WelcomeLoader";
+import PWARegister from "@/components/PWARegister";
+import MobileBottomNav from "@/components/MobileBottomNav";
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({
@@ -16,6 +20,7 @@ export const metadata: Metadata = {
   description:
     'An intelligent career platform that protects students and professionals from recruitment scams while generating a personalized Career DNA, AI Roadmap, and real-time career opportunities.',
   generator: 'v0.app',
+  manifest: '/manifest.webmanifest',
   icons: {
     icon: [
       {
@@ -36,6 +41,9 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
   colorScheme: 'light dark',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: 'white' },
@@ -54,18 +62,21 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} bg-background`}
     >
       <body className="font-sans antialiased bg-background">
+        <LanguageProvider>
+          <WelcomeLoader />
+          <PWARegister />
+          <SiteHeader />
 
-  <SiteHeader />
+          <main>
+            {children}
+          </main>
 
-  <main>
-    {children}
-  </main>
+          <SiteFooter />
+          <MobileBottomNav />
 
-  <SiteFooter />
-
-  {process.env.NODE_ENV === "production" && <Analytics />}
-
-</body>
+          {process.env.NODE_ENV === "production" && <Analytics />}
+        </LanguageProvider>
+      </body>
     </html>
   )
 }

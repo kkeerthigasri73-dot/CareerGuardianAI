@@ -6,7 +6,7 @@ import Verification from "@/models/Verification";
 import CareerDNA from "@/models/CareerDNA";
 import Resume from "@/models/Resume";
 import Interview from "@/models/Interview";
-
+import Placement from "@/models/Placement";
 export async function GET(){
 
 try{
@@ -37,6 +37,13 @@ resume?.resumeScore||0;
 const interviewScore=
 interview?.score||0;
 
+const placement =
+  await Placement.findOne()
+    .sort({ createdAt: -1 });
+
+const placementScore =
+  placement?.placementScore || 0;
+
 const guardianScore=Math.round(
 
 verificationScore*0.10+
@@ -60,6 +67,10 @@ career,
 resume,
 
 interview,
+
+placement,
+
+placementScore,
 
 guardianScore,
 

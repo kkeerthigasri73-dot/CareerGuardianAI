@@ -15,6 +15,7 @@ export async function middleware(req: NextRequest) {
     "/opportunities",
     "/verify",
     "/profile",
+    "/jobs",
   ];
 
   const isProtected = protectedRoutes.some((route) =>
@@ -66,5 +67,7 @@ export const config = {
     "/verify/:path*",
     "/profile",
     "/profile/:path*",
+    "/jobs",
+    "/jobs/:path*",
   ],
 };

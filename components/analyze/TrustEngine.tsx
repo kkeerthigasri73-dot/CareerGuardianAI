@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { Activity, ShieldCheck } from "lucide-react";
 import TrustLayer from "./TrustLayer";
 import DownloadReportButton from "./DownloadReportButton";
 import TrustScore from "./TrustScore";
@@ -106,24 +106,24 @@ export default function TrustEngine({
 );
 
   return (
-    <div className="rounded-3xl bg-white p-8 shadow-xl">
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 p-4 shadow-2xl sm:p-8">
 
-      <div className="mb-8 flex items-center gap-4">
+      <div className="mb-8 flex flex-col gap-5 border-b border-white/10 pb-7 sm:flex-row sm:items-center sm:justify-between">
 
-        <div className="rounded-xl bg-blue-100 p-3">
-          <ShieldCheck className="h-8 w-8 text-blue-600" />
+        <div className="flex items-center gap-4">
+          <div className="rounded-2xl bg-cyan-400/15 p-3 text-cyan-300 ring-1 ring-cyan-300/30">
+            <ShieldCheck className="h-8 w-8" />
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">RTIM / LIVE ANALYSIS</p>
+            <h2 className="mt-1 text-2xl font-black text-white sm:text-3xl">
+              CareerGuardian AI Investigation
+            </h2>
+          </div>
         </div>
-
-        <div>
-
-          <h2 className="text-3xl font-bold">
-            CareerGuardian AI Investigation
-          </h2>
-
-          <p className="text-slate-500">
-            Running 12-Layer Recruitment Trust Verification...
-          </p>
-
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-300">
+          <Activity className="h-4 w-4 text-emerald-300" />
+          {currentLayer >= layers.length ? "Analysis complete" : "Scanning live signals"}
         </div>
 
       </div>
@@ -132,20 +132,20 @@ export default function TrustEngine({
 
         <div className="mb-3 flex justify-between">
 
-          <span className="font-semibold">
+          <span className="font-semibold text-slate-300">
             Investigation Progress
           </span>
 
-          <span className="font-bold text-blue-600">
+          <span className="font-bold text-cyan-300">
             {Math.round(progress)}%
           </span>
 
         </div>
 
-        <div className="h-3 overflow-hidden rounded-full bg-slate-200">
+        <div className="h-3 overflow-hidden rounded-full bg-white/10">
 
           <div
-            className="h-full rounded-full bg-gradient-to-r from-blue-600 via-violet-600 to-cyan-500 transition-all duration-700"
+            className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-emerald-300 transition-all duration-700"
             style={{
               width: `${progress}%`,
             }}
@@ -155,7 +155,7 @@ export default function TrustEngine({
 
       </div>
 
-      <div className="space-y-4">
+      <div className="grid gap-3 lg:grid-cols-2">
 
         {layers.map((layer, index) => (
 

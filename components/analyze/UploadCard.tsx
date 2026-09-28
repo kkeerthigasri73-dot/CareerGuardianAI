@@ -67,11 +67,10 @@ if (file.size > maxSize) {
       });
 
       const extract = await response.json();
-      alert("Extract API Success");
       console.log("Extract API Response:", extract);
 
       if (!extract.success) {
-        alert("Extraction Failed");
+        alert(extract.message || "Extraction Failed");
         return;
       }
 

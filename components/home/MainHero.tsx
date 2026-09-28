@@ -5,19 +5,20 @@ import {
   ArrowRight,
   ShieldCheck,
   Sparkles,
+  Activity,
+  BrainCircuit,
+  ScanSearch,
 } from "lucide-react";
 
 export default function MainHero() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50">
+    <section className="hero-command relative overflow-hidden">
+      <div className="hero-command__grid" aria-hidden="true" />
+      <div className="hero-command__beam hero-command__beam--one" aria-hidden="true" />
+      <div className="hero-command__beam hero-command__beam--two" aria-hidden="true" />
 
-      <div className="absolute -left-40 top-0 h-96 w-96 rounded-full bg-blue-200/30 blur-3xl" />
-
-      <div className="absolute right-0 top-20 h-[450px] w-[450px] rounded-full bg-cyan-200/20 blur-3xl" />
-
-      <div className="relative mx-auto flex min-h-[88vh] max-w-7xl items-center px-6">
-
-        <div className="mx-auto max-w-4xl text-center">
+      <div className="relative mx-auto grid min-h-[calc(100vh-5rem)] max-w-7xl items-center gap-14 px-6 py-20 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
+        <div className="hero-copy">
 
           <div className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-5 py-2">
 
@@ -31,11 +32,11 @@ export default function MainHero() {
 
           </div>
 
-          <h1 className="mt-10 text-6xl font-black leading-tight text-slate-900">
+          <h1 className="mt-8 text-5xl font-black leading-[0.98] tracking-tight text-white sm:text-7xl">
 
             Protect.
 
-            <span className="text-blue-600">
+            <span className="text-cyan-300">
 
               Verify.
 
@@ -47,7 +48,7 @@ export default function MainHero() {
 
           </h1>
 
-          <p className="mx-auto mt-8 max-w-3xl text-xl leading-9 text-slate-600">
+          <p className="mt-8 max-w-xl text-lg leading-8 text-slate-300 sm:text-xl">
 
             CareerGuardian AI protects students and job seekers
             from fake recruitment, internship scams and fraudulent
@@ -55,11 +56,11 @@ export default function MainHero() {
 
           </p>
 
-          <div className="mt-12 flex justify-center gap-6">
+          <div className="mt-10 flex flex-wrap gap-4">
 
             <Link href="#ecosystem">
 
-              <button className="flex items-center gap-3 rounded-2xl bg-blue-600 px-10 py-5 text-lg font-semibold text-white shadow-xl transition hover:scale-105">
+              <button className="flex items-center gap-3 rounded-2xl bg-cyan-300 px-8 py-4 text-lg font-bold text-slate-950 shadow-[0_0_35px_rgba(103,232,249,0.3)] transition hover:-translate-y-1 hover:bg-cyan-200">
 
                 Get Started
 
@@ -71,12 +72,14 @@ export default function MainHero() {
 
           </div>
 
-          <div className="mt-20 flex justify-center">
+          <div className="mt-12 flex flex-wrap gap-3 text-sm font-semibold text-slate-300"><span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2"><ShieldCheck className="h-4 w-4 text-emerald-300" />12-layer verification</span><span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2"><BrainCircuit className="h-4 w-4 text-cyan-300" />AI career intelligence</span></div>
 
-            <Sparkles className="h-8 w-8 animate-bounce text-blue-600" />
+        </div>
 
-          </div>
-
+        <div className="hero-console" aria-label="CareerGuardian AI live protection overview">
+          <div className="hero-console__top"><span className="flex items-center gap-2 text-sm font-bold text-white"><span className="hero-live-dot" />GUARDIAN LIVE SYSTEM</span><span className="text-xs text-slate-400">RTIM / 12 LAYERS</span></div>
+          <div className="hero-console__orb"><div className="hero-orbit hero-orbit--outer" /><div className="hero-orbit hero-orbit--inner" /><div className="hero-orb-core"><ShieldCheck className="h-12 w-12" /><span>TRUST<br />ENGINE</span></div><span className="hero-orb-label hero-orb-label--top">01 VERIFY</span><span className="hero-orb-label hero-orb-label--right">02 GROW</span><span className="hero-orb-label hero-orb-label--bottom">03 RECOVER</span></div>
+          <div className="grid gap-3 sm:grid-cols-3"><div className="hero-metric"><ScanSearch className="h-4 w-4 text-cyan-300" /><strong>12</strong><span>active checks</span></div><div className="hero-metric"><Activity className="h-4 w-4 text-emerald-300" /><strong>LIVE</strong><span>risk signals</span></div><div className="hero-metric"><Sparkles className="h-4 w-4 text-amber-300" /><strong>AI</strong><span>career guidance</span></div></div>
         </div>
 
       </div>

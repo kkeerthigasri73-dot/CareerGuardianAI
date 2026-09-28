@@ -25,7 +25,6 @@ export default function LoginForm() {
   }
 
   async function login() {
-
     if (!form.email || !form.password) {
       alert("Please enter email and password.");
       return;
@@ -34,59 +33,79 @@ export default function LoginForm() {
     setLoading(true);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      15000
+    );
 
     try {
-
       const res = await fetch("/api/auth/login", {
-
         method: "POST",
         credentials: "same-origin",
         signal: controller.signal,
+
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(form),
 
+        body: JSON.stringify(form),
       });
 
       const json = await res.json();
 
       if (json.success) {
+
+        // Save user ID for badges and progress tracking
+        localStorage.setItem(
+          "userId",
+          json.user.id
+        );
+
+        // Save complete user information
+        localStorage.setItem(
+          "user",
+          JSON.stringify(json.user)
+        );
+
         alert("Login Successful!");
+
         window.location.href = "/dashboard";
+
         return;
+
       } else {
         alert(json.message);
       }
-    } catch (error) {
 
-      console.error("Login request failed:", error);
-      alert(error instanceof DOMException && error.name === "AbortError"
-        ? "Login request timed out. Please try again."
-        : "Login Failed");
+    } catch (error) {
+      console.error(
+        "Login request failed:",
+        error
+      );
+
+      alert(
+        error instanceof DOMException &&
+        error.name === "AbortError"
+          ? "Login request timed out. Please try again."
+          : "Login Failed"
+      );
 
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
     }
-
   }
 
   return (
-
     <div className="rounded-3xl bg-white p-8 shadow-xl">
 
       <h2 className="text-3xl font-bold">
-
         Login
-
       </h2>
 
       <p className="mt-2 text-slate-500">
-
         Welcome back to CareerGuardian AI
-
       </p>
 
       <div className="mt-8 space-y-5">
@@ -118,25 +137,15 @@ export default function LoginForm() {
       >
 
         {loading ? (
-
           <>
-
-            <Loader2 className="h-5 w-5 animate-spin"/>
-
+            <Loader2 className="h-5 w-5 animate-spin" />
             Signing In...
-
           </>
-
         ) : (
-
           <>
-
-            <LogIn className="h-5 w-5"/>
-
+            <LogIn className="h-5 w-5" />
             Login
-
           </>
-
         )}
 
       </button>
@@ -149,15 +158,11 @@ export default function LoginForm() {
           href="/signup"
           className="ml-2 font-semibold text-blue-600"
         >
-
           Create Account
-
         </Link>
 
       </p>
 
     </div>
-
   );
-
 }

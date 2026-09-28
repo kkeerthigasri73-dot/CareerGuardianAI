@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useLanguage } from "@/src/context/LanguageContext";
 import {
   User,
   LayoutDashboard,
+  Settings,
   LogOut,
   ChevronDown,
 } from "lucide-react";
@@ -15,6 +17,7 @@ interface UserData {
 }
 
 export default function UserMenu() {
+  const { t } = useLanguage();
   const menuRef = useRef<HTMLDivElement>(null);
 
   const [open, setOpen] = useState(false);
@@ -86,29 +89,40 @@ export default function UserMenu() {
     }
   }
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="flex items-center gap-2">
+        <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-100 hover:text-cyan-700">
+          Log in
+        </Link>
+        <Link href="/signup" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-900 transition hover:border-pink-400 hover:text-pink-700">
+          Create account
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div
       ref={menuRef}
-      className="relative"
+      className="relative shrink-0"
     >
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2 shadow-sm transition hover:shadow-md"
+        className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2 shadow-sm transition hover:border-cyan-200 hover:shadow-md"
       >
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 text-lg font-bold text-white">
           {user.name.charAt(0).toUpperCase()}
         </div>
 
-        <div className="hidden text-left lg:block">
+        <div className="hidden min-w-0 max-w-[150px] text-left lg:block">
 
           <p className="text-sm font-semibold text-slate-900">
-            {user.name}
+            <span className="block truncate">{user.name}</span>
           </p>
 
           <p className="text-xs text-slate-500">
-            {user.email}
+            <span className="block truncate">{user.email}</span>
           </p>
 
         </div>
@@ -123,7 +137,7 @@ export default function UserMenu() {
 
       {open && (
 
-        <div className="absolute right-0 mt-3 w-72 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+        <div className="absolute right-0 mt-3 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
 
           <div className="bg-gradient-to-r from-blue-600 to-cyan-500 p-6 text-white">
 
@@ -141,7 +155,7 @@ export default function UserMenu() {
                   {user.name}
                 </h3>
 
-                <p className="text-sm text-blue-100">
+                <p className="max-w-[190px] truncate text-sm text-blue-100">
                   {user.email}
                 </p>
 
@@ -161,7 +175,7 @@ export default function UserMenu() {
 
               <User className="h-5 w-5 text-blue-600" />
 
-              My Profile
+              {t("myProfile")}
 
             </Link>
 
@@ -173,7 +187,19 @@ export default function UserMenu() {
 
               <LayoutDashboard className="h-5 w-5 text-green-600" />
 
-              Dashboard
+              {t("dashboard")}
+
+            </Link>
+
+            <Link
+              href="/settings"
+              className="mt-1 flex items-center gap-3 rounded-xl px-4 py-3 transition hover:bg-slate-100"
+              onClick={() => setOpen(false)}
+            >
+
+              <Settings className="h-5 w-5 text-violet-600" />
+
+              {t("settings")}
 
             </Link>
 
@@ -184,7 +210,7 @@ export default function UserMenu() {
 
               <LogOut className="h-5 w-5" />
 
-              Logout
+              {t("logout")}
 
             </button>
 

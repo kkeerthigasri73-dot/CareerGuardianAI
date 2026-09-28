@@ -2,17 +2,22 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { useLanguage } from "@/src/context/LanguageContext";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import ProgressCards from "@/components/dashboard/ProgressCards";
 import ActivityTimeline from "@/components/dashboard/ActivityTimeline";
 import GuardianInsights from "@/components/dashboard/GuardianInsights";
 import QuickActions from "@/components/dashboard/QuickActions";
+import Link from "next/link";
+import { Trophy, ExternalLink, MapPin } from "lucide-react";
 
 export default function DashboardPage() {
+  const { t } = useLanguage();
 
   const [loading, setLoading] = useState(true);
 
   const [dashboard, setDashboard] = useState<any>(null);
+  const [recommendedJobs, setRecommendedJobs] = useState<any[]>([]);
   const hasLoadedRef = useRef(false);
 
   useEffect(() => {
@@ -21,6 +26,7 @@ export default function DashboardPage() {
 
     hasLoadedRef.current = true;
     loadDashboard();
+    fetch("/api/jobs/recommendations", { cache: "no-store" }).then((response) => response.ok ? response.json() : null).then((result) => setRecommendedJobs((result?.jobs || []).slice(0, 4))).catch(() => undefined);
 
   }, []);
 
@@ -73,13 +79,13 @@ export default function DashboardPage() {
 
           <h1 className="text-3xl font-bold text-slate-900">
 
-            Loading Guardian Dashboard...
+            {t("loadingGuardianDashboard")}
 
           </h1>
 
           <p className="mt-3 text-slate-600">
 
-            Verifying your secure session.
+            {t("verifyingSecureSession")}
 
           </p>
 
@@ -99,7 +105,7 @@ export default function DashboardPage() {
 
         <h1 className="text-3xl font-bold">
 
-          No Dashboard Data Found
+          {t("noDashboardDataFound")}
 
         </h1>
 
@@ -122,6 +128,34 @@ export default function DashboardPage() {
           guardianScore={dashboard.guardianScore}
 
         />
+        <Link
+  href="/achievements"
+  className="group block rounded-3xl bg-gradient-to-br from-yellow-400 to-orange-500 p-6 text-white shadow-lg transition hover:scale-[1.02]"
+>
+  <div className="flex items-center justify-between">
+
+    <div>
+
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+        <Trophy className="h-7 w-7" />
+      </div>
+
+      <h2 className="mt-5 text-2xl font-black">
+        {t("skillBadges")}
+      </h2>
+
+      <p className="mt-2 text-white/80">
+        {t("trackAchievements")}
+      </p>
+
+    </div>
+
+    <span className="text-3xl transition group-hover:translate-x-1">
+      →
+    </span>
+
+  </div>
+</Link>
 
         <ProgressCards
 
@@ -136,6 +170,12 @@ export default function DashboardPage() {
           guardianScore={dashboard.guardianScore}
 
         />
+
+        <section className="rounded-3xl bg-white p-8 shadow-sm">
+          <div className="flex items-center justify-between gap-4"><div><p className="font-bold uppercase tracking-widest text-cyan-600">Career matches</p><h2 className="mt-1 text-3xl font-black text-slate-900">Recommended Opportunities</h2></div><Link href="/jobs" className="font-bold text-blue-600 hover:text-cyan-600">View All Opportunities</Link></div>
+          {recommendedJobs.length === 0 ? <p className="mt-6 text-slate-500">Complete Career DNA to unlock matched openings.</p> : <div className="mt-6 grid gap-4 md:grid-cols-2">{recommendedJobs.map((job) => <div key={job._id} className="rounded-2xl border border-slate-100 p-5"><div className="flex justify-between gap-3"><div><p className="font-bold text-cyan-700">{job.company}</p><h3 className="mt-1 text-xl font-black text-slate-900">{job.jobTitle}</h3></div><span className="font-black text-emerald-600">{job.matchScore}%</span></div><p className="mt-3 flex items-center gap-1 text-sm text-slate-500"><MapPin className="h-4 w-4" />{job.location} • {job.employmentType}</p><button type="button" onClick={() => window.open(job.jobUrl, "_blank", "noopener,noreferrer")} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white"><ExternalLink className="h-4 w-4" />View Opportunity</button></div>)}</div>}
+        </section>
+        
 
         <ActivityTimeline
 

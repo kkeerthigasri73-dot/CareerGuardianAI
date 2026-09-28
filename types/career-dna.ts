@@ -15,6 +15,16 @@ export interface StudentProfile {
   internship: string;
   github: string;
   linkedin: string;
+  jobPreferences?: JobPreferences;
+}
+
+export interface JobPreferences {
+  roles: string[];
+  skills: string[];
+  locations: string[];
+  employmentTypes: string[];
+  preferredCompanies: string[];
+  minimumMatchScore: number;
 }
 
 export interface RoadmapItem {

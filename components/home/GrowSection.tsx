@@ -8,6 +8,7 @@ import {
   Briefcase,
   Bot,
   Radar,
+  Building2,
   ArrowRight,
   PlayCircle,
   CheckCircle2,
@@ -44,6 +45,13 @@ const tools = [
     title: "Opportunity Radar",
     description: "Discover verified internships and job opportunities.",
   },
+  {
+  icon: Building2,
+  title: "College Dashboard",
+  description:
+    "Monitor recruiters, verification activity and recruitment risks.",
+  href: "/college-dashboard",
+},
 ];
 
 export default function GrowSection() {
@@ -92,10 +100,11 @@ export default function GrowSection() {
 
               return (
 
-                <div
-                  key={tool.title}
-                  className="rounded-3xl border border-slate-200 bg-white p-6 shadow transition hover:-translate-y-2 hover:shadow-xl"
-                >
+                <Link
+  key={tool.title}
+  href={tool.href || "#"}
+  className="rounded-3xl border border-slate-200 bg-white p-6 shadow transition hover:-translate-y-2 hover:shadow-xl"
+>
 
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100">
 
@@ -115,7 +124,7 @@ export default function GrowSection() {
 
                   </p>
 
-                </div>
+                </Link>
 
               );
 

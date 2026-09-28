@@ -36,6 +36,15 @@ const CareerDNASchema = new Schema(
 
     },
 
+    jobPreferences: {
+      roles: { type: [String], default: [] },
+      skills: { type: [String], default: [] },
+      locations: { type: [String], default: [] },
+      employmentTypes: { type: [String], default: [] },
+      preferredCompanies: { type: [String], default: [] },
+      minimumMatchScore: { type: Number, default: 60 },
+    },
+
   },
 
   {

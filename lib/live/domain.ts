@@ -10,7 +10,7 @@ export interface DomainResult {
 export async function verifyDomain(
   website: string
 ): Promise<DomainResult> {
-  if (!website) {
+  if (!website || !website.trim()) {
     return {
       passed: false,
       score: 0,
@@ -24,32 +24,61 @@ export async function verifyDomain(
   try {
     let url = website.trim();
 
-    if (!url.startsWith("http")) {
-      url = "https://" + url;
+    // Remove spaces that may come from OCR
+    url = url.replace(/\s/g, "");
+
+    // Add HTTPS if OCR extracted only the domain
+    if (!/^https?:\/\//i.test(url)) {
+      url = `https://${url}`;
     }
 
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       method: "HEAD",
+      redirect: "follow",
     });
 
-    const ssl = url.startsWith("https://");
+    // Some websites block HEAD requests
+    // Try GET if HEAD fails
+    if (!response.ok) {
+      response = await fetch(url, {
+        method: "GET",
+        redirect: "follow",
+      });
+    }
+
+    const finalUrl = response.url || url;
+
+    const ssl = finalUrl.startsWith("https://");
 
     const govt =
-      url.includes(".gov.in") ||
-      url.includes(".nic.in") ||
-      url.includes(".gov");
+      finalUrl.includes(".gov.in") ||
+      finalUrl.includes(".nic.in") ||
+      finalUrl.includes(".gov");
+
+    if (!response.ok) {
+      return {
+        passed: false,
+        score: 0,
+        status: response.status.toString(),
+        ssl,
+        government: govt,
+        message: "Website could not be verified",
+      };
+    }
 
     return {
-      passed: response.ok,
+      passed: true,
       score: govt ? 15 : 10,
       status: response.status.toString(),
       ssl,
       government: govt,
       message: govt
-        ? "Official Government Website"
-        : "Website reachable",
+        ? "Official Government Website Verified"
+        : "Official Website Reachable",
     };
-  } catch {
+  } catch (error) {
+    console.error("Domain verification error:", error);
+
     return {
       passed: false,
       score: 0,

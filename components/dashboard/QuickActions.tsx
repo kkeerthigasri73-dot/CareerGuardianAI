@@ -8,40 +8,51 @@ import {
   Mic2,
   LayoutDashboard,
   ArrowRight,
+  Building2,
 } from "lucide-react";
 
-const actions = [
-  {
-    title: "Verify Recruitment",
-    description: "Verify a new recruitment notification.",
-    href: "/verify",
-    icon: ShieldCheck,
-    color: "from-green-500 to-emerald-600",
-  },
-  {
-    title: "Career DNA",
-    description: "View your AI Career Intelligence Report.",
-    href: "/career-dna",
-    icon: BrainCircuit,
-    color: "from-blue-600 to-cyan-500",
-  },
-  {
-    title: "Resume Studio",
-    description: "Generate an ATS-optimized resume.",
-    href: "/resume-builder",
-    icon: FileText,
-    color: "from-violet-600 to-purple-600",
-  },
-  {
-    title: "Interview AI",
-    description: "Practice AI-powered mock interviews.",
-    href: "/interview",
-    icon: Mic2,
-    color: "from-orange-500 to-red-500",
-  },
-];
+import { useLanguage } from "@/src/context/LanguageContext";
 
 export default function QuickActions() {
+  const { t } = useLanguage();
+
+  const actions = [
+    {
+      title: t("verifyRecruitment"),
+      description: t("verifyRecruitmentDescription"),
+      href: "/verify",
+      icon: ShieldCheck,
+      color: "from-green-500 to-emerald-600",
+    },
+    {
+      title: t("careerDNATitle"),
+      description: t("careerDNADescription"),
+      href: "/career-dna",
+      icon: BrainCircuit,
+      color: "from-blue-600 to-cyan-500",
+    },
+    {
+      title: t("resumeStudio"),
+      description: t("resumeStudioDescription"),
+      href: "/resume-builder",
+      icon: FileText,
+      color: "from-violet-600 to-purple-600",
+    },
+    {
+      title: t("interviewAI"),
+      description: t("interviewDescription"),
+      href: "/interview",
+      icon: Mic2,
+      color: "from-orange-500 to-red-500",
+    },
+    {
+      title: t("collegeDashboardTitle"),
+      description: t("collegeDashboardDescription"),
+      href: "/college-dashboard",
+      icon: Building2,
+      color: "from-indigo-600 to-blue-600",
+    },
+  ];
 
   return (
 
@@ -53,7 +64,7 @@ export default function QuickActions() {
 
         <h2 className="text-3xl font-black">
 
-          Quick Actions
+          {t("quickActions")}
 
         </h2>
 
@@ -65,8 +76,7 @@ export default function QuickActions() {
 
       </p>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-
+<div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-6">
         {actions.map((action) => {
 
           const Icon = action.icon;
@@ -101,7 +111,7 @@ export default function QuickActions() {
 
               <div className="mt-6 flex items-center gap-2 font-semibold text-blue-600">
 
-                Open Module
+                {t("openModule")}
 
                 <ArrowRight className="h-5 w-5 transition group-hover:translate-x-2"/>
 

@@ -29,7 +29,7 @@ export default function Logo({
     <Link href="/" className="inline-flex items-center gap-3 lg:gap-4">
       <div className="relative shrink-0 flex items-center justify-center">
         <div className={`flex ${iconSize} items-center justify-center rounded-[1.2rem] bg-white shadow-none`}>
-          <svg viewBox="0 0 512 512" className={size === "lg" ? "h-36 w-36" : size === "sm" ? "h-20 w-20" : "h-28 w-28"}>
+          <svg viewBox="0 0 512 512" className={size === "lg" ? "h-16 w-16" : size === "sm" ? "h-10 w-10" : "h-12 w-12"}>
             <defs>
               <linearGradient id="shieldBorder" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#2563EB" />
