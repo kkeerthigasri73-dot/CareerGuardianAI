@@ -32,9 +32,11 @@ export async function verifyDomain(
       url = `https://${url}`;
     }
 
+    const timeoutSignal = AbortSignal.timeout(8000);
     let response = await fetch(url, {
       method: "HEAD",
       redirect: "follow",
+      signal: timeoutSignal,
     });
 
     // Some websites block HEAD requests
@@ -43,6 +45,7 @@ export async function verifyDomain(
       response = await fetch(url, {
         method: "GET",
         redirect: "follow",
+        signal: timeoutSignal,
       });
     }
 
@@ -77,15 +80,13 @@ export async function verifyDomain(
         : "Official Website Reachable",
     };
   } catch (error) {
-    console.error("Domain verification error:", error);
-
     return {
       passed: false,
       score: 0,
       status: "Offline",
       ssl: false,
       government: false,
-      message: "Website unreachable",
+      message: error instanceof Error && error.name === "TimeoutError" ? "Website check timed out" : "Website unreachable",
     };
   }
 }

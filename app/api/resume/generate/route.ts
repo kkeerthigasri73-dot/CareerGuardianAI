@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import CareerDNA from "@/models/CareerDNA";
-import Groq from "groq-sdk";
 import Resume from "@/models/Resume";
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY!,
-});
+import groq from "@/lib/groq";
 
 export async function POST(req: NextRequest) {
 
@@ -39,6 +36,8 @@ export async function POST(req: NextRequest) {
 You are Guardian Resume Studio AI.
 
 Create a professional ATS Resume.
+
+Use ONLY facts explicitly present in Student Profile. Career DNA and the verified job may guide skill ordering and wording, but are not evidence about the student's personal history. Do not invent a title, project details, responsibilities, certifications, achievements, languages, dates, grades, or contact information. If a fact is missing, return an empty string or empty array. Return projects, internships, certifications, achievements, and languages only when they are explicitly present in Student Profile.
 
 Verified Recruitment
 
@@ -129,29 +128,8 @@ Return JSON only.
     const reply =
       completion.choices[0]?.message?.content || "{}";
 
-    let result;
-
-    try {
-
-      result =
-        JSON.parse(reply);
-        await Resume.create({
-
-  userId: "demo-user",
-
-  resume: result,
-
-  resumeScore: result.resumeScore || 0,
-
-  atsKeywords: result.atsKeywords || [],
-
-});
-
-    } catch {
-
-      result = {};
-
-    }
+    const result = JSON.parse(reply) as Record<string, unknown>;
+    await Resume.create({ userId: String(dna.userId || "demo-user"), resume: result, resumeScore: Number(result.resumeScore) || 0, atsKeywords: Array.isArray(result.atsKeywords) ? result.atsKeywords : [] });
 
     return NextResponse.json({
 

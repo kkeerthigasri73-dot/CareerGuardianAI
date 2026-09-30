@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 
 import { useLanguage } from "@/src/context/LanguageContext";
+import type { TranslationKey } from "@/src/lib/translations";
 import UserMenu from "@/components/UserMenu";
 import Logo from "@/components/branding/Logo";
 import NotificationBell from "@/components/NotificationBell";
@@ -29,70 +30,70 @@ import NotificationBell from "@/components/NotificationBell";
    NAVIGATION DATA
 ========================================================= */
 
-const verifyItems = [
+const verifyItems: NavItem[] = [
   {
-    label: "Recruitment Verification",
+    label: "recruitmentVerification",
     href: "/analyze",
     icon: ShieldCheck,
   },
   {
-    label: "AI Trust Engine",
+    label: "aiTrustEngine",
     href: "/verify",
     icon: FileCheck2,
   },
   {
-    label: "Verification Dashboard",
+    label: "verificationDashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
   },
 ];
 
-const growItems = [
+const growItems: NavItem[] = [
   {
-    label: "Career DNA",
+    label: "careerDNA",
     href: "/career-dna",
     icon: Compass,
   },
   {
-    label: "Resume Builder",
+    label: "resumeBuilder",
     href: "/resume-builder",
     icon: FileText,
   },
   {
-    label: "Placement Predictor",
+    label: "placementPredictor",
     href: "/placement",
     icon: GraduationCap,
   },
   {
-    label: "Interview Simulator",
+    label: "interviewSimulator",
     href: "/interview",
     icon: Mic2,
   },
   {
-    label: "AI Mentor",
+    label: "aiMentor",
     href: "/ai-mentor",
     icon: Bot,
   },
   {
-    label: "Opportunity Radar",
+    label: "opportunityRadar",
     href: "/opportunities",
     icon: Radar,
   },
 ];
 
-const recoverItems = [
+const recoverItems: NavItem[] = [
   {
-    label: "Emergency Recovery",
+    label: "emergencyRecovery",
     href: "/emergency",
     icon: Siren,
   },
   {
-    label: "Report a Scam",
+    label: "reportScam",
     href: "/emergency#report-scam",
     icon: TriangleAlert,
   },
   {
-    label: "Recovery Guidance",
+    label: "recoveryGuidance",
     href: "/emergency",
     icon: ShieldCheck,
   },
@@ -103,7 +104,7 @@ const recoverItems = [
 ========================================================= */
 
 type NavItem = {
-  label: string;
+  label: TranslationKey;
   href: string;
   icon?: typeof ShieldCheck;
 };
@@ -168,7 +169,7 @@ export function SiteHeader() {
           MAIN NAVBAR
       ===================================================== */}
 
-      <div className="mx-auto flex h-[4.5rem] max-w-[1440px] items-center justify-between gap-6 px-5 sm:px-8">
+      <div className="mx-auto flex h-[4.5rem] max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 xl:px-8">
         {/* =================================================
             LOGO
 
@@ -178,25 +179,25 @@ export function SiteHeader() {
         ================================================= */}
 
         <div
-          className="shrink-0"
+          className="flex shrink-0 items-center"
           onClick={() => {
             closeNavigation();
           }}
         >
-          <Logo />
+          <Logo size="sm" />
         </div>
 
         {/* =================================================
             DESKTOP NAVIGATION
         ================================================= */}
 
-        <nav className="ml-4 hidden flex-1 items-center justify-center gap-1 lg:flex">
+        <nav className="hidden h-full min-w-0 flex-1 items-center justify-center gap-1 lg:flex">
           {/* HOME */}
 
           <Link
             href="/"
             onClick={closeNavigation}
-            className={`rounded-lg px-3 py-2 text-sm font-bold transition ${
+            className={`inline-flex h-10 items-center justify-center rounded-lg px-3 text-sm font-bold leading-none transition ${
               isActive("/")
                 ? "bg-indigo-50 text-indigo-700"
                 : "text-slate-700 hover:bg-slate-100 hover:text-cyan-700"
@@ -260,7 +261,7 @@ export function SiteHeader() {
           <Link
             href="/dashboard"
             onClick={closeNavigation}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition ${
+            className={`flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-bold leading-none transition ${
               isActive("/dashboard")
                 ? "bg-indigo-50 text-indigo-700"
                 : "text-slate-700 hover:bg-slate-100 hover:text-cyan-700"
@@ -275,16 +276,7 @@ export function SiteHeader() {
             DESKTOP RIGHT SIDE
         ================================================= */}
 
-        <div className="ml-4 hidden shrink-0 items-center gap-4 lg:flex">
-          <Link
-            href="/analyze"
-            onClick={closeNavigation}
-            className="inline-flex items-center gap-2 whitespace-nowrap rounded-xl bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-md shadow-violet-100 transition hover:bg-violet-700"
-          >
-            <ShieldCheck className="h-4 w-4" />
-            Verify Recruitment
-          </Link>
-
+        <div className="hidden shrink-0 items-center gap-2 lg:flex">
           <NotificationBell />
 
           <UserMenu />
@@ -297,14 +289,14 @@ export function SiteHeader() {
         <button
           type="button"
           aria-label={
-            mobileOpen ? "Close navigation menu" : "Open navigation menu"
+              mobileOpen ? t("closeNavigation") : t("openNavigation")
           }
           aria-expanded={mobileOpen}
           onClick={() => {
             setMobileOpen((current) => !current);
             setOpenDropdown(null);
           }}
-          className="rounded-lg p-2 transition hover:bg-slate-100 lg:hidden"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg p-0 transition hover:bg-slate-100 lg:hidden"
         >
           {mobileOpen ? (
             <X className="h-6 w-6" />
@@ -332,13 +324,13 @@ export function SiteHeader() {
                   : "text-slate-700 hover:bg-slate-100 hover:text-blue-600"
               }`}
             >
-              Home
+              {t("home")}
             </Link>
 
             {/* VERIFY */}
 
             <MobileSection
-              title="Verify"
+              title={t("verify")}
               section="verify"
               items={verifyItems}
               open={openMobileSection === "verify"}
@@ -354,7 +346,7 @@ export function SiteHeader() {
             {/* GROW */}
 
             <MobileSection
-              title="Grow"
+              title={t("grow")}
               section="grow"
               items={growItems}
               open={openMobileSection === "grow"}
@@ -370,7 +362,7 @@ export function SiteHeader() {
             {/* RECOVER */}
 
             <MobileSection
-              title="Recover"
+              title={t("recover")}
               section="recover"
               items={recoverItems}
               open={openMobileSection === "recover"}
@@ -395,19 +387,9 @@ export function SiteHeader() {
               }`}
             >
               <LayoutDashboard className="h-4 w-4" />
-              Dashboard
+              {t("dashboard")}
             </Link>
 
-            {/* VERIFY RECRUITMENT */}
-
-            <Link
-              href="/analyze"
-              onClick={closeNavigation}
-              className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-violet-700"
-            >
-              <ShieldCheck className="h-4 w-4" />
-              Verify Recruitment
-            </Link>
           </nav>
 
           {/* MOBILE USER AREA */}
@@ -443,6 +425,8 @@ function DesktopDropdown({
   onNavigate: () => void;
   isActive: boolean;
 }) {
+  const { t } = useLanguage();
+
   const itemIsActive = (href: string) => {
     const cleanHref = href.split("#")[0];
 
@@ -474,7 +458,7 @@ function DesktopDropdown({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={onToggle}
-        className={`flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-bold transition ${
+        className={`flex h-10 items-center justify-center gap-1 rounded-lg px-3 text-sm font-bold leading-none transition ${
           active
             ? "bg-indigo-50 text-indigo-700"
             : "text-slate-700 hover:bg-slate-100 hover:text-cyan-700"
@@ -530,7 +514,7 @@ function DesktopDropdown({
 
                 <span className="flex-1">
                   <span className="block text-sm font-semibold">
-                    {item.label}
+                    {t(item.label)}
                   </span>
                 </span>
               </Link>
@@ -563,6 +547,8 @@ function MobileSection({
   onNavigate: () => void;
   isItemActive: (href: string) => boolean;
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="overflow-hidden rounded-xl border border-slate-100">
       {/* SECTION BUTTON */}
@@ -615,7 +601,7 @@ function MobileSection({
                   />
                 )}
 
-                <span>{item.label}</span>
+                <span>{t(item.label)}</span>
               </Link>
             );
           })}

@@ -16,9 +16,9 @@ export default function TrustScore({
     circumference - (score / 100) * circumference;
 
   const color =
-    verdict === "SAFE"
+    verdict === "SAFE" || verdict === "LOW RISK"
       ? "#16a34a"
-      : verdict === "SUSPICIOUS"
+      : verdict === "SUSPICIOUS" || verdict === "REVIEW"
       ? "#eab308"
       : "#dc2626";
 
@@ -64,7 +64,7 @@ export default function TrustScore({
           </h1>
 
           <p className="text-slate-500">
-            Trust Score
+            Evidence-Adjusted Trust Score
           </p>
 
         </div>
@@ -73,9 +73,9 @@ export default function TrustScore({
 
       <span
         className={`mt-6 rounded-full px-8 py-3 text-lg font-bold text-white ${
-          verdict === "SAFE"
+          verdict === "SAFE" || verdict === "LOW RISK"
             ? "bg-green-600"
-            : verdict === "SUSPICIOUS"
+            : verdict === "SUSPICIOUS" || verdict === "REVIEW"
             ? "bg-yellow-500"
             : "bg-red-600"
         }`}

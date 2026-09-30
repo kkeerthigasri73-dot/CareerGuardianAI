@@ -208,7 +208,7 @@ No explanation.
       userId: (() => {
         const token = req.cookies.get("token")?.value;
         const decoded = token ? verifyToken(token) as { id?: string } | null : null;
-        return decoded?.id || student.email || "demo-user";
+        return decoded?.id || "demo-user";
       })(),
 
       verifiedJob,

@@ -18,6 +18,12 @@ const keywords = [
   "without exam",
 ];
 
+const paymentRiskPatterns = [
+  /(?:pay|payment|transfer|send)\s+(?:a\s+)?(?:registration|processing|application|interview|training|security|job confirmation)?\s*fee/i,
+  /(?:registration|processing|application|interview|training|security)\s+fee\s+(?:of\s+)?(?:₹|rs\.?\s*)?\d/i,
+  /pay\s+(?:₹|rs\.?\s*)?\d[\d,]*/i,
+];
+
 export function detectScam(
   text: string
 ): ScamResult {
@@ -27,13 +33,16 @@ export function detectScam(
   const found = keywords.filter(k =>
     content.includes(k)
   );
+  const explicitNoFee = /(?:no|without|zero|free of)\s+(?:(?:any|a)\s+)?(?:application|registration|processing|interview|training|security deposit)?\s*fee|no payment required/i.test(content);
+  const paymentRequests = explicitNoFee ? [] : paymentRiskPatterns.filter((pattern) => pattern.test(text)).map(() => "recruitment payment request");
+  const allFindings = [...found, ...paymentRequests];
 
   return {
-    passed: found.length === 0,
-    score: found.length === 0 ? 15 : 0,
+    passed: allFindings.length === 0,
+    score: allFindings.length === 0 ? 15 : 0,
     message:
-      found.length === 0
+      allFindings.length === 0
         ? "No Scam Keywords"
-        : found.join(", "),
+        : [...new Set(allFindings)].join(", "),
   };
 }

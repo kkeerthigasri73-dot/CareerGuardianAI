@@ -3,8 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { UserPlus, Loader2 } from "lucide-react";
+import { useLanguage } from "@/src/context/LanguageContext";
 
 export default function SignupForm() {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -29,7 +31,7 @@ export default function SignupForm() {
       !form.email ||
       !form.password
     ) {
-      alert("Please fill all required fields.");
+      alert(t("auth.fillRequired"));
       return;
     }
 
@@ -47,14 +49,14 @@ export default function SignupForm() {
       const json = await res.json();
 
       if (json.success) {
-        alert("Account Created Successfully!");
+        alert(t("auth.accountCreated"));
 
         window.location.href = "/login";
       } else {
-        alert(json.message);
+        alert(t("auth.signupFailed"));
       }
     } catch {
-      alert("Signup Failed");
+      alert(t("auth.signupFailed"));
     }
 
     setLoading(false);
@@ -64,18 +66,19 @@ export default function SignupForm() {
     <div className="rounded-3xl bg-white p-8 shadow-xl">
 
       <h2 className="text-3xl font-bold">
-        Create Account
+        {t("auth.createAccount")}
       </h2>
 
       <p className="mt-2 text-slate-500">
-        Join CareerGuardian AI
+        {t("auth.welcome")}
       </p>
 
       <div className="mt-8 space-y-5">
 
         <input
           name="name"
-          placeholder="Full Name"
+          placeholder={t("auth.fullName")}
+          aria-label={t("auth.fullName")}
           value={form.name}
           onChange={update}
           className="w-full rounded-xl border p-4"
@@ -84,7 +87,8 @@ export default function SignupForm() {
         <input
           name="email"
           type="email"
-          placeholder="Email"
+          placeholder={t("auth.email")}
+          aria-label={t("auth.email")}
           value={form.email}
           onChange={update}
           className="w-full rounded-xl border p-4"
@@ -92,7 +96,8 @@ export default function SignupForm() {
 
         <input
           name="college"
-          placeholder="College"
+          placeholder={t("auth.college")}
+          aria-label={t("auth.college")}
           value={form.college}
           onChange={update}
           className="w-full rounded-xl border p-4"
@@ -101,7 +106,8 @@ export default function SignupForm() {
         <input
           name="password"
           type="password"
-          placeholder="Password"
+          placeholder={t("auth.password")}
+          aria-label={t("auth.password")}
           value={form.password}
           onChange={update}
           className="w-full rounded-xl border p-4"
@@ -117,25 +123,25 @@ export default function SignupForm() {
         {loading ? (
           <>
             <Loader2 className="h-5 w-5 animate-spin" />
-            Creating...
+            {t("auth.creating")}
           </>
         ) : (
           <>
             <UserPlus className="h-5 w-5" />
-            Create Account
+            {t("auth.createAccount")}
           </>
         )}
       </button>
 
       <p className="mt-6 text-center text-slate-500">
 
-        Already have an account?
+        {t("auth.hasAccount")}
 
         <Link
           href="/login"
           className="ml-2 font-semibold text-blue-600"
         >
-          Login
+          {t("auth.login")}
         </Link>
 
       </p>

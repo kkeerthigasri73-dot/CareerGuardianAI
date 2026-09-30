@@ -23,6 +23,20 @@ const UserSchema = new Schema(
       default: "",
     },
 
+    degree: { type: String, default: "" },
+    branch: { type: String, default: "" },
+    cgpa: { type: String, default: "" },
+    skills: { type: [String], default: [] },
+    careerGoal: { type: String, default: "" },
+    professionalTitle: { type: String, default: "" },
+    phone: { type: String, default: "" },
+    location: { type: String, default: "" },
+    linkedin: { type: String, default: "" },
+    github: { type: String, default: "" },
+    portfolio: { type: String, default: "" },
+    photoUrl: { type: String, default: "" },
+    references: { type: [String], default: [] },
+
     role: {
       type: String,
       default: "student",
@@ -47,6 +61,12 @@ const UserSchema = new Schema(
     badges: {
       type: [String],
       default: [],
+    },
+
+    preferredLanguage: {
+      type: String,
+      enum: ["en", "ta", "hi", "te", "ml", "kn"],
+      default: "en",
     },
 
     jobNotificationPreferences: {

@@ -1,420 +1,134 @@
-import { NextResponse } from "next/server";
-
+﻿import { NextResponse } from "next/server";
 import { verifyDomain } from "@/lib/live/domain";
 import { verifyEmail } from "@/lib/live/email";
-import { verifyHTTPS } from "@/lib/live/https";
-import { verifyGovernment } from "@/lib/live/government";
-import { detectScam } from "@/lib/live/scam";
-
+import { fuseRecruitmentEvidence } from "@/lib/evidenceFusion";
 import connectDB from "@/lib/mongodb";
-
 import Verification from "@/models/Verification";
 import User from "@/models/User";
-
 import { calculateBadges } from "@/lib/badges";
+import groq from "@/lib/groq";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-
-    const {
-      company,
-      website,
-      email,
-      phone,
-      salary,
-      notificationNumber,
-      applicationFee,
-      education,
-      jobRole,
-      description,
-      userId,
-    } = body;
-
-    const layers: any[] = [];
-
-    // =========================
-    // LAYER 1 - OCR EXTRACTION
-    // =========================
-
-    layers.push({
-      layer: 1,
-      title: "OCR Extraction",
-      passed: !!company,
-      score: company ? 10 : 0,
-      message: company
-        ? "Recruitment information extracted."
-        : "OCR extraction failed.",
-    });
-
-    // ==================================
-    // LAYER 2 - ORGANIZATION VERIFICATION
-    // ==================================
-
-    const government = verifyGovernment(
-      company || "",
-      notificationNumber || ""
-    );
-
-    const isPrivateRecruitment =
-      government.message
-        .toLowerCase()
-        .includes("private");
-
-    layers.push({
-      layer: 2,
-      title: "Organization Verification",
-      passed:
-        government.passed ||
-        isPrivateRecruitment,
-      score: government.passed
-        ? government.score
-        : isPrivateRecruitment
-        ? 5
-        : 0,
-      message: government.passed
-        ? government.message
-        : isPrivateRecruitment
-        ? "Private Company Recruitment"
-        : government.message,
-    });
-
-    // ==============================
-    // LAYER 3 - WEBSITE VERIFICATION
-    // ==============================
-
-    const domain = await verifyDomain(
-      website || ""
-    );
-
-    layers.push({
-      layer: 3,
-      title: "Website Verification",
-      passed: domain.passed,
-      score: domain.score,
-      message: domain.message,
-    });
-
-    // ============================
-    // LAYER 4 - EMAIL VERIFICATION
-    // ============================
-
-    const emailResult = verifyEmail(
-      email || ""
-    );
-
-    layers.push({
-      layer: 4,
-      title: "Recruiter Email",
-      passed: emailResult.passed,
-      score: emailResult.score,
-      message: emailResult.message,
-    });
-
-    // ============================
-    // LAYER 5 - PHONE VERIFICATION
-    // ============================
-
-    const cleanedPhone = (phone || "")
-      .replace(/[^\d+]/g, "")
-      .replace(/^\+91/, "")
-      .replace(/^91/, "");
-
-    const isMobile =
-      /^[6-9]\d{9}$/.test(cleanedPhone);
-
-    const isLandline =
-      /^\d{10,11}$/.test(cleanedPhone);
-
-    const phoneValid =
-      isMobile || isLandline;
-
-    layers.push({
-      layer: 5,
-      title: "Phone Verification",
-      passed: phoneValid,
-      score: phoneValid ? 10 : 0,
-      message: phoneValid
-        ? isMobile
-          ? "Valid Indian Mobile Number"
-          : "Valid Office Contact Number"
-        : phone
-        ? "Contact Number Requires Review"
-        : "Official Phone Not Mentioned",
-    });
-
-    // ===========================
-    // LAYER 6 - SALARY ANALYSIS
-    // ===========================
-
-    const salaryText =
-      (salary || "").trim();
-
-    const salaryValues =
-      salaryText.match(/\d[\d,]*/g);
-
-    if (
-      !salaryText ||
-      !salaryValues ||
-      salaryValues.length === 0
-    ) {
-      layers.push({
-        layer: 6,
-        title: "Salary Analysis",
-        passed: true,
-        score: 5,
-        message:
-          "Salary Not Mentioned — No Risk Detected",
+    const { company, website, email, phone, salary, notificationNumber, applicationFee, education, jobRole, description, userId } = body;
+    const domain = await verifyDomain(website || "");
+    const emailResult = verifyEmail(email || "", website || "");
+    const evidence = fuseRecruitmentEvidence(body, domain, emailResult);
+    let aiExplanation = "";
+    try {
+      const explanationResponse = await groq.chat.completions.create({
+        model: "openai/gpt-oss-120b",
+        temperature: 0,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: 'You are CareerGuardian AI Trust Engine. Explain the supplied structured recruitment assessment accurately. Respond in selectedApplicationLanguage when possible. Distinguish supporting, risk, missing, and conflicting evidence. Missing evidence does not mean fraud. A call, personal phone, informal language, accent, grammar, or lack of a public posting is not fraud by itself. Treat transcription as evidence, not proof. Use only supplied timestamped excerpts; do not invent quotes, timestamps, or speaker identities. Prioritize actual payment demands, credential requests, domain conflicts, impersonation, and contradictions. Never change supplied scores or verdict. Return JSON only with a summary string.'
+          },
+          {
+            role: "user",
+            content: JSON.stringify({
+              sourceType: evidence.sourceType,
+              inputType: body.inputType || "unknown",
+              inputMethod: body.inputMethod || "unknown",
+              selectedApplicationLanguage: body.selectedApplicationLanguage || "en",
+              extractedData: { company, jobRole, website, email, phone, salary, applicationFee },
+              recording: body.inputType === "recording" ? {
+                transcript: typeof body.transcript === "string" ? body.transcript.slice(0, 20000) : "",
+                transcriptSegments: (body.transcriptSegments || []).slice(0, 80),
+                keyEvidence: body.keyEvidence || [], repeatedEvidence: body.repeatedEvidence || [],
+                recordingRiskSignals: body.recordingRiskSignals,
+                transcriptLanguage: body.transcriptLanguage,
+                duration: body.recordingDuration,
+                additionalEvidenceSource: body.additionalEvidenceSource || "",
+              } : undefined,
+              evidence: evidence.evidence,
+              positiveSignals: evidence.positiveSignals,
+              negativeSignals: evidence.negativeSignals,
+              missingSignals: evidence.missingSignals,
+              riskScore: evidence.riskScore,
+              verificationConfidence: evidence.verificationConfidence,
+              sourceConfidence: evidence.sourceConfidence,
+              evidenceCoverage: evidence.evidenceCoverage,
+              verdict: evidence.verdict,
+              recommendedAction: evidence.recommendedAction,
+            }),
+          },
+        ],
       });
-    } else {
-      const firstSalary = Number(
-        salaryValues[0].replace(
-          /,/g,
-          ""
-        )
-      );
-
-      const realisticSalary =
-        firstSalary >= 10000 &&
-        firstSalary <= 300000;
-
-      layers.push({
-        layer: 6,
-        title: "Salary Analysis",
-        passed: realisticSalary,
-        score: realisticSalary
-          ? 10
-          : 0,
-        message: realisticSalary
-          ? "Salary Range Appears Reasonable"
-          : "Salary Requires Review",
-      });
+      const reply = explanationResponse.choices[0]?.message?.content || "{}";
+      const parsed = JSON.parse(reply);
+      if (typeof parsed.summary === "string") aiExplanation = parsed.summary.slice(0, 1200);
+    } catch {
+      aiExplanation = "";
     }
-
-    // ==============================
-    // LAYER 7 - SCAM KEYWORD CHECK
-    // ==============================
-
-    const scam = detectScam(
-      description || ""
-    );
-
-    layers.push({
-      layer: 7,
-      title: "Scam Keyword Detection",
-      passed: scam.passed,
-      score: scam.score,
-      message: scam.message,
-    });
-
-    // =========================
-    // LAYER 8 - HTTPS SECURITY
-    // =========================
-
-    const https = verifyHTTPS(
-      website || ""
-    );
-
-    layers.push({
-      layer: 8,
-      title: "HTTPS Security",
-      passed: https.passed,
-      score: https.score,
-      message: https.message,
-    });
-
-    // ==========================
-    // LAYER 9 - APPLICATION FEE
-    // ==========================
-
-    const feeAmount = Number(
-      (applicationFee || "").replace(
-        /[^\d]/g,
-        ""
-      )
-    );
-
-    const feeAcceptable =
-      feeAmount === 0 ||
-      feeAmount <= 1000;
-
-    layers.push({
-      layer: 9,
-      title: "Application Fee",
-      passed: feeAcceptable,
-      score: feeAcceptable ? 10 : 0,
-      message: applicationFee
-        ? `Application Fee ₹${feeAmount}`
-        : "No Fee Mentioned",
-    });
-
-    // ===========================
-    // LAYER 10 - EDUCATION CHECK
-    // ===========================
-
-    layers.push({
-      layer: 10,
-      title: "Education Verification",
-      passed: !!education,
-      score: education ? 5 : 0,
-      message:
-        education ||
-        "Education not found.",
-    });
-
-    // ==========================
-    // LAYER 11 - JOB ROLE CHECK
-    // ==========================
-
-    layers.push({
-      layer: 11,
-      title: "Job Role Verification",
-      passed: !!jobRole,
-      score: jobRole ? 5 : 0,
-      message:
-        jobRole ||
-        "Job role not found.",
-    });
-
-    // ======================
-    // CALCULATE TRUST SCORE
-    // ======================
-
-    const totalScore = layers.reduce(
-      (sum, layer) =>
-        sum + Number(layer.score || 0),
-      0
-    );
-
-    const trustScore = Math.min(
-      Math.round(totalScore),
-      100
-    );
-
-    let verdict = "SCAM";
-
-    if (trustScore >= 80) {
-      verdict = "SAFE";
-    } else if (trustScore >= 60) {
-      verdict = "SUSPICIOUS";
-    }
-
-    // ==========================
-    // LAYER 12 - FINAL AI SCORE
-    // ==========================
-
-    layers.push({
-      layer: 12,
-      title: "AI Final Trust Score",
-      passed: trustScore >= 60,
-      score: trustScore,
-      message: `${trustScore}% Trust Score`,
-    });
-
-    // ====================
-    // CONNECT DATABASE
-    // ====================
-
+    const layers = evidence.layers;
+    // The original response fields remain available for existing consumers.
+    const verdict = evidence.verdict;
     await connectDB();
-
-    // ==========================
-    // SAVE VERIFICATION RECORD
-    // ==========================
-
-    await Verification.create({
-      userId: userId || "demo-user",
-
-      company: company || "",
-
-      jobRole: jobRole || "",
-
-      trustScore,
-
-      status: verdict,
-
-      layers,
-
-      website: website || "",
-
-      email: email || "",
-
-      phone: phone || "",
-
-      salary: salary || "",
-
-      notificationNumber:
-        notificationNumber || "",
-
-      applicationFee:
-        applicationFee || "",
-
-      education:
-        education || "",
-
-      description:
-        description || "",
+    const savedVerification = await Verification.create({
+      userId: userId || "demo-user", company: company || "", jobRole: jobRole || "",
+      trustScore: evidence.trustScore, status: verdict, layers, website: website || "",
+      email: email || "", phone: phone || "", salary: salary || "",
+      notificationNumber: notificationNumber || "", applicationFee: applicationFee || "",
+      education: education || "", description: description || "",
+      sourceType: evidence.sourceType, riskScore: evidence.riskScore,
+      inputType: body.inputType || "unknown", inputMethod: body.inputMethod || "unknown",
+      verificationConfidence: evidence.verificationConfidence, sourceConfidence: evidence.sourceConfidence,
+      evidenceCoverage: evidence.evidenceCoverage, evidence: evidence.evidence,
+      positiveSignals: evidence.positiveSignals, negativeSignals: evidence.negativeSignals,
+      missingSignals: evidence.missingSignals, independentConfirmation: evidence.independentConfirmation,
+      recommendedAction: evidence.recommendedAction,
+      aiExplanation,
+      mediaType: body.mediaType,
+      mediaMetadata: body.mediaMetadata,
+      recordingDuration: body.recordingDuration,
+      transcript: typeof body.transcript === "string" ? body.transcript.slice(0, 200000) : undefined,
+      cleanTranscript: typeof body.cleanTranscript === "string" ? body.cleanTranscript.slice(0, 200000) : undefined,
+      transcriptLanguage: body.transcriptLanguage,
+      selectedApplicationLanguage: body.selectedApplicationLanguage,
+      transcriptSegments: Array.isArray(body.transcriptSegments) ? body.transcriptSegments.slice(0, 1500) : undefined,
+      keyEvidence: Array.isArray(body.keyEvidence) ? body.keyEvidence.slice(0, 80) : undefined,
+      repeatedEvidence: Array.isArray(body.repeatedEvidence) ? body.repeatedEvidence.slice(0, 80) : undefined,
+      recordingRiskSignals: body.recordingRiskSignals,
+      recordingSummary: body.recordingSummary,
     });
-
-    // ==========================
-    // UPDATE USER BADGES
-    // ==========================
-
     let unlockedBadges: string[] = [];
-
     if (userId) {
-      const user =
-        await User.findById(userId);
-
+      const user = await User.findById(userId);
       if (user) {
-        // Increase completed verification count
-        user.verificationCount =
-          Number(
-            user.verificationCount || 0
-          ) + 1;
-
-        // Calculate earned badges
-        unlockedBadges =
-          calculateBadges(user);
-
-        // Save badges
-        user.badges =
-          unlockedBadges;
-
+        user.verificationCount = Number(user.verificationCount || 0) + 1;
+        unlockedBadges = calculateBadges(user);
+        user.badges = unlockedBadges;
         await user.save();
       }
     }
-
-    // =====================
-    // RETURN FINAL RESULT
-    // =====================
-
     return NextResponse.json({
-      success: true,
-
-      trustScore,
-
-      verdict,
-
-      layers,
-
-      unlockedBadges,
+      success: true, trustScore: evidence.trustScore, verdict, layers, unlockedBadges,
+      verificationId: String(savedVerification._id),
+      riskScore: evidence.riskScore, verificationConfidence: evidence.verificationConfidence,
+      sourceConfidence: evidence.sourceConfidence, sourceType: evidence.sourceType,
+      evidenceCoverage: evidence.evidenceCoverage, evidence: evidence.evidence,
+      inputType: body.inputType || "unknown", inputMethod: body.inputMethod || "unknown",
+      sourceLabel: evidence.sourceLabel, positiveSignals: evidence.positiveSignals,
+      negativeSignals: evidence.negativeSignals, missingSignals: evidence.missingSignals,
+      independentConfirmation: evidence.independentConfirmation,
+      recommendedAction: evidence.recommendedAction,
+      aiExplanation,
+      ...(body.inputType === "recording" ? {
+        mediaType: body.mediaType, recordingDuration: body.recordingDuration,
+        mediaMetadata: body.mediaMetadata,
+        transcript: body.transcript, cleanTranscript: body.cleanTranscript,
+        transcriptLanguage: body.transcriptLanguage, selectedApplicationLanguage: body.selectedApplicationLanguage,
+        transcriptSegments: body.transcriptSegments, keyEvidence: body.keyEvidence,
+        repeatedEvidence: body.repeatedEvidence, recordingRiskSignals: body.recordingRiskSignals,
+        recordingSummary: body.recordingSummary,
+      } : {}),
     });
-
   } catch (error) {
-    console.error(
-      "Verification Error:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        success: false,
-        message:
-          "Verification failed.",
-      },
-      {
-        status: 500,
-      }
-    );
+    console.error("Verification Error:", error instanceof Error ? error.message : "Unknown error");
+    return NextResponse.json({ success: false, message: "Verification failed." }, { status: 500 });
   }
 }
+

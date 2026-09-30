@@ -9,9 +9,11 @@ import {
   Mail,
   ExternalLink,
 } from "lucide-react";
+import { useLanguage } from "@/src/context/LanguageContext";
 
 export function SiteFooter() {
   const pathname = usePathname();
+  const { t } = useLanguage();
 
   return (
     <footer className="mt-24">
@@ -36,16 +38,13 @@ export function SiteFooter() {
 
             <h2 className="text-5xl font-bold leading-tight">
 
-              Build Your Career With Confidence
+              {t("footer.ctaTitle")}
 
             </h2>
 
             <p className="mx-auto mt-8 max-w-3xl text-xl leading-9 text-blue-100">
 
-              CareerGuardian AI helps students detect fake recruitment,
-              build ATS-ready resumes, discover career paths, prepare for
-              placements and unlock opportunities through AI-powered
-              career intelligence.
+              {t("footer.ctaDescription")}
 
             </p>
 
@@ -55,7 +54,7 @@ export function SiteFooter() {
 
                 <button className="rounded-full bg-white px-10 py-5 text-lg font-bold text-blue-700 transition duration-300 hover:scale-105 hover:shadow-xl">
 
-                  Analyze Recruitment
+                  {t("footer.analyzeRecruitment")}
 
                   <ArrowRight className="ml-2 inline h-5 w-5" />
 
@@ -67,7 +66,7 @@ export function SiteFooter() {
 
                 <button className="rounded-full border border-white px-10 py-5 text-lg font-bold transition duration-300 hover:bg-white hover:text-blue-700">
 
-                  Create Free Account
+                  {t("footer.createAccount")}
 
                 </button>
 
@@ -109,7 +108,7 @@ export function SiteFooter() {
 
                 <p className="text-sm text-slate-500">
 
-                  AI Career Intelligence Platform
+                  {t("footer.platformTagline")}
 
                 </p>
 
@@ -119,8 +118,7 @@ export function SiteFooter() {
 
             <p className="mt-6 leading-8 text-slate-600">
 
-              Protecting students from fake recruitment and helping
-              them build successful careers with Artificial Intelligence.
+              {t("footer.mission")}
 
             </p>
 
@@ -132,23 +130,23 @@ export function SiteFooter() {
 
             <h3 className="mb-5 text-lg font-bold">
 
-              Platform
+              {t("footer.platform")}
 
             </h3>
 
             <ul className="space-y-3 text-slate-600">
 
-              <li>Recruitment Trust Engine</li>
+              <li>{t("footer.trustEngine")}</li>
 
-              <li>Career DNA</li>
+              <li>{t("careerDNA")}</li>
 
-              <li>Resume Intelligence</li>
+              <li>{t("footer.resumeIntelligence")}</li>
 
-              <li>Placement Predictor</li>
+              <li>{t("footer.placementPredictor")}</li>
 
-              <li>AI Mentor</li>
+              <li>{t("footer.aiMentor")}</li>
 
-              <li>Opportunity Radar</li>
+              <li>{t("footer.opportunityRadar")}</li>
 
             </ul>
 
@@ -160,21 +158,21 @@ export function SiteFooter() {
 
             <h3 className="mb-5 text-lg font-bold">
 
-              AI Features
+              {t("footer.aiFeatures")}
 
             </h3>
 
             <ul className="space-y-3 text-slate-600">
 
-              <li>OCR Document Analysis</li>
+              <li>{t("footer.ocr")}</li>
 
-              <li>NLP Scam Detection</li>
+              <li>{t("footer.scamDetection")}</li>
 
-              <li>Government Verification</li>
+              <li>{t("footer.governmentVerification")}</li>
 
-              <li>Company Validation</li>
+              <li>{t("footer.companyValidation")}</li>
 
-              <li>AI Career Recommendations</li>
+              <li>{t("footer.aiRecommendations")}</li>
 
             </ul>
 
@@ -186,7 +184,7 @@ export function SiteFooter() {
 
             <h3 className="mb-5 text-lg font-bold">
 
-              Connect
+              {t("footer.connect")}
 
             </h3>
 
@@ -199,7 +197,7 @@ export function SiteFooter() {
 
                 <Globe className="h-5 w-5" />
 
-                Website
+                {t("footer.website")}
 
               </a>
 
@@ -210,7 +208,7 @@ export function SiteFooter() {
 
                 <Mail className="h-5 w-5" />
 
-                Email Support
+                {t("footer.emailSupport")}
 
               </a>
 
@@ -221,7 +219,7 @@ export function SiteFooter() {
 
                 <ExternalLink className="h-5 w-5" />
 
-                Documentation
+                {t("footer.documentation")}
 
               </a>
 
@@ -233,7 +231,7 @@ export function SiteFooter() {
 
         <div className="border-t border-slate-200 py-6 text-center text-sm text-slate-500">
 
-          © 2026 CareerGuardian AI • AI Powered Career Protection Platform
+          © 2026 CareerGuardian AI • {t("footer.copyrightTagline")}
 
         </div>
 

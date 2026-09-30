@@ -14,7 +14,9 @@ try{
 await connectDB();
 
 const verification=
-await Verification.findOne().sort({createdAt:-1});
+await Verification.findOne()
+  .select("-transcript -cleanTranscript -transcriptSegments -keyEvidence -repeatedEvidence -recordingRiskSignals -mediaMetadata -guardianTrustCheck")
+  .sort({createdAt:-1});
 
 const career=
 await CareerDNA.findOne().sort({createdAt:-1});

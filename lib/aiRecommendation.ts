@@ -1,48 +1,20 @@
-export function generateRecommendation(
-  trustScore: number,
-  data: any
-) {
+export function generateRecommendation(_trustScore: number, data: any): string[] {
+  const verification = data?.verification;
   const recommendations: string[] = [];
-
-  if (data.company)
-    recommendations.push(
-      "Government organization identified."
-    );
-
-  if (data.website?.includes(".gov"))
-    recommendations.push(
-      "Official government website verified."
-    );
-
-  if (data.website?.startsWith("https"))
-    recommendations.push(
-      "Secure HTTPS connection detected."
-    );
-
-  if (data.salary)
-    recommendations.push(
-      "Salary structure appears realistic."
-    );
-
-  if (data.applicationFee)
-    recommendations.push(
-      "Official application fee mentioned."
-    );
-
-  if (trustScore >= 90)
-    recommendations.push(
-      "Very low scam probability."
-    );
-
-  else if (trustScore >= 70)
-    recommendations.push(
-      "Review notification before applying."
-    );
-
-  else
-    recommendations.push(
-      "High scam probability detected."
-    );
-
+  if (verification?.recommendedAction) recommendations.push(verification.recommendedAction);
+  if (verification?.verdict === "REVIEW") {
+    recommendations.push("More verification is needed because the submitted evidence is incomplete.");
+  }
+  if (verification?.verdict === "HIGH RISK") {
+    recommendations.push("Do not pay or share sensitive information while risk signals remain unresolved.");
+  }
+  for (const signal of verification?.positiveSignals || []) {
+    if (recommendations.length >= 4) break;
+    recommendations.push(signal);
+  }
+  for (const signal of verification?.negativeSignals || []) {
+    if (recommendations.length >= 5) break;
+    recommendations.push(signal);
+  }
   return recommendations;
 }

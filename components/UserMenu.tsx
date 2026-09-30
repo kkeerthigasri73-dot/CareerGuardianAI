@@ -5,10 +5,8 @@ import Link from "next/link";
 import { useLanguage } from "@/src/context/LanguageContext";
 import {
   User,
-  LayoutDashboard,
   Settings,
   LogOut,
-  ChevronDown,
 } from "lucide-react";
 
 interface UserData {
@@ -72,9 +70,13 @@ export default function UserMenu() {
   }
   async function logout() {
     try {
-      await fetch("/api/auth/logout", {
+      const response = await fetch("/api/auth/logout", {
         method: "POST",
       });
+
+      if (!response.ok) {
+        throw new Error("Logout request failed");
+      }
 
       // Clear local user state immediately
       setUser(null);
@@ -91,14 +93,14 @@ export default function UserMenu() {
 
   if (!user) {
     return (
-      <div className="flex items-center gap-2">
-        <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-100 hover:text-cyan-700">
-          Log in
-        </Link>
-        <Link href="/signup" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-900 transition hover:border-pink-400 hover:text-pink-700">
-          Create account
-        </Link>
-      </div>
+      <Link
+        href="/login"
+        aria-label={t("login")}
+        title={t("login")}
+        className="flex h-10 w-10 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-100 hover:text-cyan-700"
+      >
+        <User className="h-5 w-5" />
+      </Link>
     );
   }
 
@@ -108,116 +110,48 @@ export default function UserMenu() {
       className="relative shrink-0"
     >
       <button
+        type="button"
+        aria-label={t("myProfile")}
+        aria-haspopup="menu"
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2 shadow-sm transition hover:border-cyan-200 hover:shadow-md"
+        className="flex h-10 w-10 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-100 hover:text-cyan-700"
       >
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 text-lg font-bold text-white">
-          {user.name.charAt(0).toUpperCase()}
-        </div>
-
-        <div className="hidden min-w-0 max-w-[150px] text-left lg:block">
-
-          <p className="text-sm font-semibold text-slate-900">
-            <span className="block truncate">{user.name}</span>
-          </p>
-
-          <p className="text-xs text-slate-500">
-            <span className="block truncate">{user.email}</span>
-          </p>
-
-        </div>
-
-        <ChevronDown
-          className={`h-4 w-4 transition ${
-            open ? "rotate-180" : ""
-          }`}
-        />
-
+        <User className="h-5 w-5" />
       </button>
 
       {open && (
-
-        <div className="absolute right-0 mt-3 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
-
-          <div className="bg-gradient-to-r from-blue-600 to-cyan-500 p-6 text-white">
-
-            <div className="flex items-center gap-4">
-
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 text-2xl font-bold">
-
-                {user.name.charAt(0).toUpperCase()}
-
-              </div>
-
-              <div>
-
-                <h3 className="font-bold">
-                  {user.name}
-                </h3>
-
-                <p className="max-w-[190px] truncate text-sm text-blue-100">
-                  {user.email}
-                </p>
-
-              </div>
-
-            </div>
-
-          </div>
-
-          <div className="p-3">
-
+        <div role="menu" className="absolute right-0 z-30 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
             <Link
               href="/profile"
-              className="flex items-center gap-3 rounded-xl px-4 py-3 transition hover:bg-slate-100"
+              role="menuitem"
+              className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
               onClick={() => setOpen(false)}
             >
-
-              <User className="h-5 w-5 text-blue-600" />
-
+              <User className="h-4 w-4" />
               {t("myProfile")}
-
-            </Link>
-
-            <Link
-              href="/dashboard"
-              className="mt-1 flex items-center gap-3 rounded-xl px-4 py-3 transition hover:bg-slate-100"
-              onClick={() => setOpen(false)}
-            >
-
-              <LayoutDashboard className="h-5 w-5 text-green-600" />
-
-              {t("dashboard")}
-
             </Link>
 
             <Link
               href="/settings"
-              className="mt-1 flex items-center gap-3 rounded-xl px-4 py-3 transition hover:bg-slate-100"
+              role="menuitem"
+              className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
               onClick={() => setOpen(false)}
             >
-
-              <Settings className="h-5 w-5 text-violet-600" />
-
+              <Settings className="h-4 w-4" />
               {t("settings")}
-
             </Link>
 
             <button
+              type="button"
+              role="menuitem"
               onClick={logout}
-              className="mt-2 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition hover:bg-red-50 hover:text-red-600"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-red-50 hover:text-red-600"
             >
-
-              <LogOut className="h-5 w-5" />
-
+              <LogOut className="h-4 w-4" />
               {t("logout")}
-
             </button>
-
-          </div>
-
         </div>
-
       )}
 
     </div>

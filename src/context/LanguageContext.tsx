@@ -15,7 +15,8 @@ import {
   type TranslationKey,
 } from "@/src/lib/translations";
 
-const STORAGE_KEY = "guardian-language";
+const STORAGE_KEY = "careerGuardianLanguage";
+const LEGACY_STORAGE_KEY = "guardian-language";
 
 function isSupportedLanguage(value: string | null): value is SupportedLanguage {
   return !!value && value in translations;
@@ -31,6 +32,7 @@ const LanguageContext = createContext<LanguageContextValue | undefined>(undefine
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<SupportedLanguage>("en");
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -39,8 +41,42 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
     if (isSupportedLanguage(savedLanguage)) {
       setLanguageState(savedLanguage);
+      setReady(true);
+      return;
     }
+
+    const legacyLanguage = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (isSupportedLanguage(legacyLanguage)) {
+      window.localStorage.setItem(STORAGE_KEY, legacyLanguage);
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+      setLanguageState(legacyLanguage);
+      setReady(true);
+      return;
+    }
+
+    let active = true;
+    fetch("/api/profile", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((result) => {
+        const preferredLanguage = result?.user?.preferredLanguage;
+        if (active && isSupportedLanguage(preferredLanguage)) {
+          setLanguageState(preferredLanguage);
+          window.localStorage.setItem(STORAGE_KEY, preferredLanguage);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setReady(true);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   const setLanguage = (value: SupportedLanguage | string) => {
     const normalized = isSupportedLanguage(value) ? value : "en";
@@ -49,12 +85,18 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, normalized);
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+      fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferredLanguage: normalized }),
+      }).catch(() => undefined);
     }
   };
 
   const t = (key: TranslationKey, fallback?: string) => {
-    const currentTranslations = translations[language] ?? translations.en;
-    const value = currentTranslations[key] ?? translations.en[key] ?? fallback ?? key;
+    const currentTranslations: Partial<Record<TranslationKey, string>> = translations[language] ?? translations.en;
+    const value = currentTranslations[key] ?? translations.en[key] ?? fallback ?? "";
 
     return value;
   };
@@ -67,6 +109,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }),
     [language]
   );
+
+  if (!ready) return null;
 
   return (
     <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>

@@ -8,8 +8,30 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     const { image, mimeType } = body;
+    const inputMethod = body.inputMethod === "url" ? "url" : body.inputMethod === "text" ? "text" : "ocr";
+    const maxTextLength = body.inputType === "recording" ? 100000 : 30000;
+    let extractedText = "";
 
-    if (!image) {
+    if (inputMethod === "text" || inputMethod === "url") {
+      const rawInput = typeof body.text === "string" ? body.text : typeof body.url === "string" ? `Recruitment opportunity URL: ${body.url}` : "";
+      if (!rawInput.trim()) {
+        return NextResponse.json({ success: false, message: "Please paste the message before continuing." }, { status: 400 });
+      }
+      const normalized = rawInput
+        .replace(/\r\n?/g, "\n")
+        .split("\n")
+        .map((line: string) => line.replace(/[\t ]+/g, " ").trim())
+        .join("\n")
+        .replace(/\n{4,}/g, "\n\n\n")
+        .trim();
+      if (normalized.length > maxTextLength) {
+        return NextResponse.json({ success: false, message: "This message is too long. Please keep it under 30,000 characters." }, { status: 413 });
+      }
+      if (inputMethod === "text" && normalized.length < 20) {
+        return NextResponse.json({ success: false, message: "Please provide more of the conversation or recruitment message so CareerGuardian AI can analyze meaningful context." }, { status: 400 });
+      }
+      extractedText = normalized;
+    } else if (!image) {
       return NextResponse.json(
         {
           success: false,
@@ -19,15 +41,15 @@ export async function POST(req: Request) {
           status: 400,
         }
       );
+    } else {
+      extractedText = await extractTextFromOCR(image, mimeType || "image/png");
     }
-
-    const extractedText = await extractTextFromOCR(image, mimeType || "image/png");
 
     if (!extractedText || extractedText.trim() === "") {
       return NextResponse.json(
         {
           success: false,
-          message: "No text found in the uploaded image.",
+          message: inputMethod === "ocr" ? "No text found in the uploaded image." : "Please provide more message content to analyze.",
         },
         {
           status: 400,
@@ -71,6 +93,7 @@ export async function POST(req: Request) {
       success: true,
       text: extractedText,
       data: json,
+      inputMethod,
     });
 
   } catch (error) {
@@ -91,7 +114,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         success: false,
-        message: "OCR extraction failed. Please try again.",
+        message: "CareerGuardian AI could not analyze this message right now. Please try again.",
       },
       {
         status: 500,

@@ -6,6 +6,8 @@ import {
   Volume2,
   Loader2,
 } from "lucide-react";
+import { useLanguage } from "@/src/context/LanguageContext";
+import { speakText as speakInLanguage } from "@/src/lib/speech";
 
 const languages = [
   { code: "en", name: "English" },
@@ -17,15 +19,15 @@ const languages = [
 ];
 
 export default function SpeakYourLanguage() {
+  const { language, setLanguage, t } = useLanguage();
   const [text, setText] = useState(
     "Welcome to CareerGuardian AI. Build your career with confidence."
   );
 
-  const [language, setLanguage] =
-    useState("en");
-
   const [translatedText, setTranslatedText] =
     useState("");
+
+  const [translationError, setTranslationError] = useState(false);
 
   const [loading, setLoading] =
     useState(false);
@@ -33,6 +35,7 @@ export default function SpeakYourLanguage() {
   async function translateText() {
     try {
       setLoading(true);
+      setTranslationError(false);
 
       const response = await fetch(
         "/api/translate",
@@ -55,6 +58,8 @@ export default function SpeakYourLanguage() {
         setTranslatedText(
           result.translatedText
         );
+      } else {
+        setTranslationError(true);
       }
 
     } catch (error) {
@@ -62,6 +67,7 @@ export default function SpeakYourLanguage() {
         "Translation error:",
         error
       );
+      setTranslationError(true);
 
     } finally {
       setLoading(false);
@@ -69,36 +75,10 @@ export default function SpeakYourLanguage() {
   }
 
   function speakText() {
-    const content =
-      translatedText || text;
+    const content = language === "en" ? translatedText || text : translatedText;
 
     if (!content) return;
-
-    window.speechSynthesis.cancel();
-
-    const speech =
-      new SpeechSynthesisUtterance(
-        content
-      );
-
-    speech.lang =
-      language === "ta"
-        ? "ta-IN"
-        : language === "hi"
-        ? "hi-IN"
-        : language === "te"
-        ? "te-IN"
-        : language === "ml"
-        ? "ml-IN"
-        : language === "kn"
-        ? "kn-IN"
-        : "en-IN";
-
-    speech.rate = 0.9;
-
-    window.speechSynthesis.speak(
-      speech
-    );
+    speakInLanguage(content, language);
   }
 
   return (
@@ -116,13 +96,13 @@ export default function SpeakYourLanguage() {
 
           <h2 className="text-2xl font-black text-slate-900">
 
-            Speak Your Language
+            {t("speakYourLanguage")}
 
           </h2>
 
           <p className="text-sm text-slate-500">
 
-            Translate CareerGuardian AI into your preferred language.
+            {t("choosePreferredLanguage")}
 
           </p>
 
@@ -134,17 +114,17 @@ export default function SpeakYourLanguage() {
 
         <label className="font-semibold text-slate-700">
 
-          Select Language
+          {t("selectLanguage")}
 
         </label>
 
         <select
           value={language}
-          onChange={(event) =>
-            setLanguage(
-              event.target.value
-            )
-          }
+          onChange={(event) => {
+            setLanguage(event.target.value);
+            setTranslatedText("");
+            setTranslationError(false);
+          }}
           className="mt-2 w-full rounded-xl border border-slate-200 p-4 outline-none focus:border-blue-500"
         >
 
@@ -169,7 +149,7 @@ export default function SpeakYourLanguage() {
 
         <label className="font-semibold text-slate-700">
 
-          Text
+          {t("textLabel")}
 
         </label>
 
@@ -203,8 +183,8 @@ export default function SpeakYourLanguage() {
         )}
 
         {loading
-          ? "Translating..."
-          : "Translate Text"}
+          ? t("loading")
+          : t("translateText")}
 
       </button>
 
@@ -214,7 +194,7 @@ export default function SpeakYourLanguage() {
 
           <p className="text-sm font-bold text-slate-500">
 
-            TRANSLATED TEXT
+            {t("translatedText")}
 
           </p>
 
@@ -226,17 +206,24 @@ export default function SpeakYourLanguage() {
 
           <button
             onClick={speakText}
-            className="mt-5 flex items-center gap-3 rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white transition hover:bg-emerald-700"
+            disabled={language !== "en" && !translatedText}
+            className="mt-5 flex items-center gap-3 rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
           >
 
             <Volume2 className="h-5 w-5" />
 
-            Listen
+            {t("listen")}
 
           </button>
 
         </div>
 
+      )}
+
+      {translationError && (
+        <p role="status" className="mt-4 text-sm text-red-700">
+          {t("translationUnavailable")}
+        </p>
       )}
 
     </section>

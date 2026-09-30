@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import {
+  ArrowRight,
   Building2,
   Globe,
   Mail,
@@ -45,6 +46,12 @@ export default function ExtractedInfo({ data }: ExtractedInfoProps) {
       {/* Information */}
 
       <div className="space-y-4">
+
+        <InfoRow
+          icon={<FileText className="h-5 w-5" />}
+          title="Input Source"
+          value={data?.inputType === "whatsapp" ? `WhatsApp Conversation — ${data?.inputMethod === "ocr" ? "OCR Extracted" : "Pasted Text"}` : data?.inputMethod === "ocr" ? "Recruitment Document — OCR Extracted" : data?.inputMethod === "text" ? "Recruitment Message — Pasted Text" : "Not recorded"}
+        />
 
         <InfoRow
           icon={<Building2 className="h-5 w-5" />}
@@ -144,7 +151,7 @@ export default function ExtractedInfo({ data }: ExtractedInfoProps) {
     <div className="rounded-xl bg-white p-4 text-center shadow">
 
       <p className="text-sm text-slate-500">
-        Trust Score
+        Evidence-Adjusted Trust Score
       </p>
 
       <h2 className="mt-2 text-4xl font-bold text-blue-600">
@@ -161,9 +168,9 @@ export default function ExtractedInfo({ data }: ExtractedInfoProps) {
 
       <h2
         className={`mt-2 text-2xl font-bold ${
-          data?.verification?.verdict === "SAFE"
+          data?.verification?.verdict === "SAFE" || data?.verification?.verdict === "LOW RISK"
             ? "text-green-600"
-            : data?.verification?.verdict === "SUSPICIOUS"
+            : data?.verification?.verdict === "SUSPICIOUS" || data?.verification?.verdict === "REVIEW"
             ? "text-yellow-600"
             : "text-red-600"
         }`}
@@ -173,6 +180,15 @@ export default function ExtractedInfo({ data }: ExtractedInfoProps) {
 
     </div>
 
+  </div>
+
+  <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    {[
+      ["Scam Risk", data?.verification?.riskScore],
+      ["Verification Confidence", data?.verification?.verificationConfidence],
+      ["Source Confidence", data?.verification?.sourceConfidence],
+      ["Evidence Coverage", data?.verification?.evidenceCoverage],
+    ].map(([label, value]) => <div key={String(label)} className="rounded-xl bg-white p-4 text-center shadow"><p className="text-sm text-slate-500">{label}</p><p className="mt-1 text-2xl font-bold">{typeof value === "number" ? `${value}%` : "—"}</p></div>)}
   </div>
 
   <div className="space-y-3">
@@ -200,12 +216,14 @@ export default function ExtractedInfo({ data }: ExtractedInfoProps) {
 
           <p
             className={`font-bold ${
-              layer.passed
+              layer.state === "HIGH_RISK"
+                ? "text-red-600"
+                : layer.state === "PASS" || (!layer.state && layer.passed)
                 ? "text-green-600"
-                : "text-red-600"
+                : "text-amber-700"
             }`}
           >
-            {layer.passed ? "PASS" : "FAIL"}
+            {layer.state === "HIGH_RISK" ? "HIGH RISK" : layer.state === "NOT_PROVIDED" ? "NOT PROVIDED" : layer.state === "NOT_APPLICABLE" ? "N/A" : layer.state === "NOT_DETECTED" ? "NOT DETECTED" : layer.state === "NOT_VERIFIED" ? "NOT VERIFIED" : layer.state === "REVIEW" ? "REVIEW" : layer.passed ? "PASS" : "NOT VERIFIED"}
           </p>
 
           <p className="text-xs text-slate-500">
@@ -227,7 +245,7 @@ export default function ExtractedInfo({ data }: ExtractedInfoProps) {
       <button
         className="mt-8 w-full rounded-xl bg-blue-600 py-4 text-lg font-semibold text-white transition hover:bg-blue-700"
       >
-        Continue AI Investigation →
+        Continue AI Investigation <ArrowRight aria-hidden="true" className="ml-2 inline h-5 w-5" />
       </button>
 
     </div>
@@ -267,3 +285,5 @@ function InfoRow({
     </div>
   );
 }
+
+

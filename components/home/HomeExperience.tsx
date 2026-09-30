@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/src/context/LanguageContext";
+import { speakText } from "@/src/lib/speech";
 import {
   ArrowRight,
   BrainCircuit,
@@ -28,8 +30,6 @@ const storageKeys = {
   completed: "careerGuardianOnboardingCompleted",
 };
 
-const welcomeMessage = "Welcome to CareerGuardian AI. Protect your career. Verify every opportunity. Grow with confidence. And succeed with intelligence.";
-
 const introCards = [
   { number: "01", label: "VERIFY", title: "Check before you commit.", description: "Check whether a recruitment opportunity is trustworthy before you apply.", icon: ShieldCheck, color: "cyan" },
   { number: "02", label: "GROW", title: "Build your next advantage.", description: "Build your Career DNA, improve your resume, practice interviews and discover opportunities.", icon: TrendingUp, color: "blue" },
@@ -43,16 +43,9 @@ export function resetCareerGuardianOnboarding() {
   window.localStorage.removeItem(storageKeys.mode);
 }
 
-export function speakWelcomeMessage() {
+export function speakWelcomeMessage(message: string, language: string) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
-  const synth = window.speechSynthesis;
-  synth.cancel();
-  const utterance = new SpeechSynthesisUtterance(welcomeMessage);
-  const voice = synth.getVoices().find((item) => /^en(-|_)/i.test(item.lang) && /natural|neural|enhanced|google|microsoft/i.test(item.name)) || synth.getVoices().find((item) => /^en(-|_)/i.test(item.lang));
-  if (voice) utterance.voice = voice;
-  utterance.rate = 0.92;
-  utterance.pitch = 1.02;
-  synth.speak(utterance);
+  speakText(message, language);
   return true;
 }
 
@@ -61,6 +54,7 @@ export function stopWelcomeVoice() {
 }
 
 export default function HomeExperience() {
+  const { language, t } = useLanguage();
   const [entryChoice, setEntryChoice] = useState<"website" | "app" | null>(null);
   const [onboarding, setOnboarding] = useState<"choice" | "welcome" | "survey" | "summary" | null>(null);
   const [step, setStep] = useState(0);
@@ -118,7 +112,7 @@ export default function HomeExperience() {
   }
 
   function startVoice() {
-    setVoiceOn(speakWelcomeMessage());
+    setVoiceOn(speakWelcomeMessage(t("home.welcomeVoice"), language));
   }
 
   return (
@@ -135,8 +129,8 @@ export default function HomeExperience() {
       {welcomeVisible && (
         <div className="fixed bottom-6 right-6 z-[70] flex max-w-sm items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-xl" role="status">
           <Sparkles className="h-5 w-5 shrink-0 text-cyan-600" />
-          <span>Welcome to your safer, smarter career journey.</span>
-          <button type="button" aria-label="Dismiss welcome" onClick={() => setWelcomeVisible(false)}><X className="h-4 w-4" /></button>
+          <span>{t("home.welcomeToast")}</span>
+          <button type="button" aria-label={t("home.dismissWelcome")} onClick={() => setWelcomeVisible(false)}><X className="h-4 w-4" /></button>
         </div>
       )}
 
@@ -181,11 +175,66 @@ function Overlay({ children }: { children: React.ReactNode }) {
 }
 
 function Hero() {
-  return <section className="hero-command relative overflow-hidden"><div className="hero-command__grid" aria-hidden="true" /><div className="hero-command__beam hero-command__beam--one" aria-hidden="true" /><div className="hero-command__beam hero-command__beam--two" aria-hidden="true" /><div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.02fr_.98fr] lg:py-20"><div className="hero-copy"><span className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2 text-xs font-black tracking-[0.16em] text-black"><ShieldCheck className="h-4 w-4" /> AI-POWERED CAREER PROTECTION</span><h1 className="mt-7 max-w-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-3xl font-bold leading-[1.05] tracking-tight text-transparent sm:text-4xl md:text-5xl">Protect Your Career.<br />Not Just Your Resume.</h1><p className="mt-7 max-w-xl text-lg leading-8 text-slate-600">CareerGuardian AI helps students verify recruitment, discover their career direction, become placement-ready and find opportunities that actually match them.</p><div className="mt-9 flex flex-wrap gap-3"><Link href="/analyze" className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3.5 font-bold text-white shadow-lg shadow-cyan-100 transition hover:-translate-y-0.5 hover:bg-cyan-700">Verify an Opportunity <ArrowRight className="h-5 w-5" /></Link><Link href="/career-dna" className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-5 py-3.5 font-bold text-slate-800 transition hover:border-pink-400 hover:text-pink-700">Explore Career AI</Link></div><p className="mt-7 text-sm font-bold tracking-wide text-slate-500">Protect <span className="text-cyan-600">•</span> Verify <span className="text-pink-600">•</span> Grow <span className="text-emerald-600">•</span> Succeed</p></div><GuardianConsole /></div></section>;
+  const { t } = useLanguage();
+
+  return (
+    <section className="hero-command relative overflow-hidden">
+      <div className="hero-command__grid" aria-hidden="true" />
+      <div className="hero-command__beam hero-command__beam--one" aria-hidden="true" />
+      <div className="hero-command__beam hero-command__beam--two" aria-hidden="true" />
+      <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.02fr_.98fr] lg:py-20">
+        <div className="hero-copy">
+          <span className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2 text-xs font-black tracking-[0.16em] text-black">
+            <ShieldCheck className="h-4 w-4" /> {t("home.hero.badge")}
+          </span>
+          <h1 className="mt-7 max-w-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-3xl font-bold leading-[1.05] tracking-tight text-transparent sm:text-4xl md:text-5xl">
+            {t("home.hero.titleFirst")}<br />{t("home.hero.titleSecond")}
+          </h1>
+          <p className="mt-7 max-w-xl text-lg leading-8 text-slate-600">
+            {t("home.hero.description")}
+          </p>
+          <div className="mt-9 flex flex-wrap gap-3">
+            <Link href="/analyze" className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3.5 font-bold text-white shadow-lg shadow-cyan-100 transition hover:-translate-y-0.5 hover:bg-cyan-700">
+              {t("home.hero.verifyButton")} <ArrowRight className="h-5 w-5" />
+            </Link>
+            <Link href="/career-dna" className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-5 py-3.5 font-bold text-slate-800 transition hover:border-pink-400 hover:text-pink-700">
+              {t("home.hero.exploreButton")}
+            </Link>
+          </div>
+          <p className="mt-7 text-sm font-bold tracking-wide text-slate-500">
+            {t("home.hero.tagline")}
+          </p>
+        </div>
+        <GuardianConsole />
+      </div>
+    </section>
+  );
 }
 
 function GuardianConsole() {
-  return <div className="hero-console" aria-label="CareerGuardian profile setup overview"><div className="hero-console__top"><span className="flex items-center gap-2 text-sm font-bold text-white"><span className="hero-live-dot" /> CAREERGUARDIAN PROFILE</span><span className="text-xs text-slate-400">NOT CONNECTED</span></div><div className="hero-console__orb"><div className="hero-orbit hero-orbit--outer" /><div className="hero-orbit hero-orbit--inner" /><div className="hero-orb-core"><ShieldCheck className="h-10 w-10" /><span>BUILD<br />YOUR PROFILE</span></div><span className="hero-orb-label hero-orb-label--top">VERIFY</span><span className="hero-orb-label hero-orb-label--right">GROW</span><span className="hero-orb-label hero-orb-label--bottom">MATCH</span></div><div className="grid gap-2 sm:grid-cols-3"><div className="hero-metric"><ShieldCheck className="h-4 w-4 text-cyan-300" /><strong>START</strong><span>Verify a signal</span></div><div className="hero-metric"><Target className="h-4 w-4 text-pink-300" /><strong>SHAPE</strong><span>Build Career DNA</span></div><div className="hero-metric"><TrendingUp className="h-4 w-4 text-violet-300" /><strong>MOVE</strong><span>Find your fit</span></div></div></div>;
+  const { t } = useLanguage();
+
+  return (
+    <div className="hero-console" aria-label={t("home.console.ariaLabel")}>
+      <div className="hero-console__top">
+        <span className="flex items-center gap-2 text-sm font-bold text-white"><span className="hero-live-dot" />{t("home.console.profile")}</span>
+        <span className="text-xs text-slate-400">{t("home.console.disconnected")}</span>
+      </div>
+      <div className="hero-console__orb">
+        <div className="hero-orbit hero-orbit--outer" />
+        <div className="hero-orbit hero-orbit--inner" />
+        <div className="hero-orb-core"><ShieldCheck className="h-10 w-10" /><span>{t("home.console.buildProfile")}</span></div>
+        <span className="hero-orb-label hero-orb-label--top">{t("home.console.verify")}</span>
+        <span className="hero-orb-label hero-orb-label--right">{t("home.console.grow")}</span>
+        <span className="hero-orb-label hero-orb-label--bottom">{t("home.console.match")}</span>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className="hero-metric"><ShieldCheck className="h-4 w-4 text-cyan-300" /><strong>{t("home.console.start")}</strong><span>{t("home.console.verifySignal")}</span></div>
+        <div className="hero-metric"><Target className="h-4 w-4 text-pink-300" /><strong>{t("home.console.shape")}</strong><span>{t("home.console.buildCareerDNA")}</span></div>
+        <div className="hero-metric"><TrendingUp className="h-4 w-4 text-violet-300" /><strong>{t("home.console.move")}</strong><span>{t("home.console.findFit")}</span></div>
+      </div>
+    </div>
+  );
 }
 
 function Journey() {

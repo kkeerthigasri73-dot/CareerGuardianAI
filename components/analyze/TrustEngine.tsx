@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { Activity, ShieldCheck } from "lucide-react";
@@ -8,6 +8,7 @@ import TrustScore from "./TrustScore";
 import AIRecommendation from "./AIRecommendation";
 import { generateRecommendation } from "@/lib/aiRecommendation";
 import { runTrustEngine } from "@/lib/trustEngine";
+import GuardianTrustCheck from "./GuardianTrustCheck";
 
 const layers = [
   {
@@ -66,6 +67,9 @@ export default function TrustEngine({
   data: any;
 }) {
   const [currentLayer, setCurrentLayer] = useState(0);
+  const [guardianTrustCheck, setGuardianTrustCheck] = useState<any>(null);
+  const verification = { ...(data?.verification || {}), ...(guardianTrustCheck || {}) };
+  const reportData = { ...data, verification: { ...verification, ...(guardianTrustCheck ? { guardianTrustCheck } : {}) } };
 
   useEffect(() => {
     if (currentLayer >= layers.length) return;
@@ -90,11 +94,11 @@ export default function TrustEngine({
   );
 
   const trustScore =
-    data?.verification?.trustScore ??
+    verification?.trustScore ??
     Math.round((totalScore / 105) * 100);
 
   const verdict =
-    data?.verification?.verdict ??
+    verification?.verdict ??
     (trustScore >= 80
       ? "SAFE"
       : trustScore >= 60
@@ -171,6 +175,7 @@ export default function TrustEngine({
                 : "pending"
             }
             passed={results[index]?.passed}
+            state={(data?.verification?.layers || [])[index]?.state}
             message={results[index]?.message}
           />
 
@@ -221,11 +226,11 @@ export default function TrustEngine({
                 <div className="rounded-2xl bg-white p-5 shadow">
 
                   <p className="text-sm text-slate-500">
-                    Scam Probability
+                    Scam Risk
                   </p>
 
                   <h3 className="mt-2 text-2xl font-bold text-red-500">
-                    {Math.max(0, 100 - trustScore)}%
+                    {verification?.riskScore ?? Math.max(0, 100 - trustScore)}%
                   </h3>
 
                 </div>
@@ -238,9 +243,9 @@ export default function TrustEngine({
 
                   <h3
                     className={`mt-2 text-2xl font-bold ${
-                      verdict === "SAFE"
+                      verdict === "SAFE" || verdict === "LOW RISK"
                         ? "text-green-600"
-                        : verdict === "SUSPICIOUS"
+                        : verdict === "SUSPICIOUS" || verdict === "REVIEW"
                         ? "text-yellow-500"
                         : "text-red-600"
                     }`}
@@ -298,12 +303,14 @@ export default function TrustEngine({
 
                   <span
                     className={`rounded-full px-4 py-2 text-sm font-bold ${
-                      layer.passed
+                      layer.state === "HIGH_RISK"
+                        ? "bg-red-100 text-red-700"
+                        : layer.state === "PASS" || (!layer.state && layer.passed)
                         ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
+                        : "bg-amber-100 text-amber-800"
                     }`}
                   >
-                    {layer.passed ? "PASS" : "FAIL"}
+                    {layer.state === "HIGH_RISK" ? "HIGH RISK" : layer.state === "NOT_PROVIDED" ? "NOT PROVIDED" : layer.state === "NOT_APPLICABLE" ? "N/A" : layer.state === "NOT_DETECTED" ? "NOT DETECTED" : layer.state === "NOT_VERIFIED" ? "NOT VERIFIED" : layer.state === "REVIEW" ? "REVIEW" : layer.passed ? "PASS" : "NOT VERIFIED"}
                   </span>
 
                 </div>
@@ -319,38 +326,45 @@ export default function TrustEngine({
           <div className="mt-8 rounded-2xl bg-blue-50 p-6">
 
             <h3 className="mb-4 text-xl font-bold">
-              AI Decision Explanation
+              WHY THIS RESULT?
             </h3>
+            {data?.verification?.aiExplanation && (
+              <p className="mb-5 rounded-xl bg-white p-4 text-slate-700">{data.verification.aiExplanation}</p>
+            )}
 
-            <ul className="space-y-2 text-slate-700">
-
-              <li>
-                ✅ Official recruitment information analyzed.
-              </li>
-
-              <li>
-                ✅ Website, email and phone verified.
-              </li>
-
-              <li>
-                ✅ Scam keyword detection completed.
-              </li>
-
-              <li>
-                ✅ Salary and eligibility analyzed.
-              </li>
-
-              <li>
-                ✅ Final AI trust score generated.
-              </li>
-
-            </ul>
+            <div className="space-y-4 text-slate-700">
+              <EvidenceGroup title="POSITIVE SIGNALS" items={data?.verification?.positiveSignals || []} empty="No positive evidence was independently confirmed." />
+              <EvidenceGroup title="NEEDS VERIFICATION" items={data?.verification?.missingSignals || []} empty="No key information was marked missing." />
+              <EvidenceGroup title="RISK SIGNALS" items={data?.verification?.negativeSignals || []} empty="No high-risk indicators detected in the submitted content." />
+            </div>
 
           </div>
-<AIRecommendation
+<div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["Scam Risk", verification?.riskScore],
+              ["Verification Confidence", verification?.verificationConfidence],
+              ["Source Confidence", verification?.sourceConfidence],
+              ["Evidence Coverage", verification?.evidenceCoverage],
+            ].map(([label, value]) => (
+              <div key={String(label)} className="rounded-2xl bg-white p-5 shadow">
+                <p className="text-sm text-slate-500">{label}</p>
+                <p className="mt-2 text-3xl font-black text-slate-900">{typeof value === "number" ? `${value}%` : "—"}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-5">
+            <h3 className="font-bold text-slate-900">Recommended next step</h3>
+            <p className="mt-2 text-slate-700">{verification?.recommendedAction || "Verify the recruiter using contact details found independently."}</p>
+            <p className="mt-2 text-sm text-slate-500">Reported source: {data?.verification?.sourceLabel || "Not provided"}</p>
+          </div><AIRecommendation
   items={recommendations}
 />
-          <DownloadReportButton data={data} />
+          <GuardianTrustCheck
+            initialVerification={data?.verification}
+            opportunity={data}
+            onComplete={setGuardianTrustCheck}
+          />
+          <DownloadReportButton data={reportData} />
         </div>
 
       )}
@@ -358,3 +372,15 @@ export default function TrustEngine({
     </div>
   );
 }
+
+function EvidenceGroup({ title, items, empty }: { title: string; items: string[]; empty: string }) {
+  return (
+    <div>
+      <h4 className="font-bold">{title}</h4>
+      {items.length ? <ul className="mt-1 list-disc pl-5">{items.map((item) => <li key={item}>{item}</li>)}</ul> : <p className="mt-1 text-sm text-slate-500">{empty}</p>}
+    </div>
+  );
+}
+
+
+

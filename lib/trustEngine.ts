@@ -1,9 +1,10 @@
-export interface TrustResult {
+﻿export interface TrustResult {
   layer: number;
   name: string;
   score: number;
   passed: boolean;
   message: string;
+  state?: string;
 }
 
 export function runTrustEngine(data: any): TrustResult[] {
@@ -15,6 +16,7 @@ export function runTrustEngine(data: any): TrustResult[] {
       score: layer.score,
       passed: layer.passed,
       message: layer.message,
+      state: layer.state,
     }));
   }
 
@@ -106,3 +108,4 @@ export function runTrustEngine(data: any): TrustResult[] {
     },
   ];
 }
+

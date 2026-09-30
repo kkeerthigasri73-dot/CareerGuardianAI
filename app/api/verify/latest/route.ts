@@ -11,6 +11,7 @@ export async function GET() {
 
     const latest =
       await Verification.findOne()
+      .select("-transcript -cleanTranscript -transcriptSegments -keyEvidence -repeatedEvidence -recordingRiskSignals -mediaMetadata -guardianTrustCheck")
       .sort({ createdAt: -1 });
 
     if (!latest) {

@@ -1,30 +1,32 @@
 "use client";
 
 import { ShieldCheck, Sparkles } from "lucide-react";
+import { useLanguage } from "@/src/context/LanguageContext";
 
 export default function AuthHeader() {
+  const { t } = useLanguage();
   return (
-    <div className="rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-600 to-cyan-600 p-10 text-white shadow-xl">
+    <div className="rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-600 to-cyan-600 p-5 text-white shadow-xl sm:p-10">
 
-      <div className="flex items-center gap-5">
+      <div className="flex items-center gap-4 sm:gap-5">
 
-        <div className="rounded-2xl bg-white/20 p-4">
+        <div className="shrink-0 rounded-2xl bg-white/20 p-3 sm:p-4">
 
-          <ShieldCheck className="h-10 w-10" />
+          <ShieldCheck className="h-8 w-8 sm:h-10 sm:w-10" />
 
         </div>
 
-        <div>
+        <div className="min-w-0 flex-1">
 
-          <h1 className="text-4xl font-bold">
+          <h1 className="break-words text-2xl font-bold sm:text-4xl">
 
-            Welcome to CareerGuardian AI
+            {t("auth.welcome")}
 
           </h1>
 
           <p className="mt-2 text-lg text-blue-100">
 
-            Securely access your AI Career Platform.
+            {t("auth.secureAccess")}
 
           </p>
 
@@ -32,17 +34,15 @@ export default function AuthHeader() {
 
       </div>
 
-      <div className="mt-8 rounded-2xl bg-white/10 p-6">
+      <div className="mt-6 rounded-2xl bg-white/10 p-4 sm:mt-8 sm:p-6">
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-start gap-3">
 
-          <Sparkles className="h-6 w-6 text-yellow-300" />
+          <Sparkles className="mt-0.5 h-6 w-6 shrink-0 text-yellow-300" />
 
-          <p>
+          <p className="min-w-0 break-words">
 
-            Login to access your Career DNA, Recruitment Reports,
-            Resume Builder, AI Mentor, Placement Predictor,
-            Opportunity Radar and Dashboard.
+            {t("auth.featureAccess")}
 
           </p>
 

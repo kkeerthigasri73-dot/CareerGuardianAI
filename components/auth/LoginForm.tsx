@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LogIn, Loader2 } from "lucide-react";
+import { useLanguage } from "@/src/context/LanguageContext";
 
 export default function LoginForm() {
+  const { t } = useLanguage();
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -26,7 +28,7 @@ export default function LoginForm() {
 
   async function login() {
     if (!form.email || !form.password) {
-      alert("Please enter email and password.");
+      alert(t("auth.enterCredentials"));
       return;
     }
 
@@ -68,14 +70,14 @@ export default function LoginForm() {
           JSON.stringify(json.user)
         );
 
-        alert("Login Successful!");
+        alert(t("auth.loginSuccess"));
 
         window.location.href = "/dashboard";
 
         return;
 
       } else {
-        alert(json.message);
+        alert(t("auth.loginFailed"));
       }
 
     } catch (error) {
@@ -87,8 +89,8 @@ export default function LoginForm() {
       alert(
         error instanceof DOMException &&
         error.name === "AbortError"
-          ? "Login request timed out. Please try again."
-          : "Login Failed"
+          ? t("auth.loginTimeout")
+          : t("auth.loginFailed")
       );
 
     } finally {
@@ -101,11 +103,11 @@ export default function LoginForm() {
     <div className="rounded-3xl bg-white p-8 shadow-xl">
 
       <h2 className="text-3xl font-bold">
-        Login
+        {t("auth.login")}
       </h2>
 
       <p className="mt-2 text-slate-500">
-        Welcome back to CareerGuardian AI
+        {t("auth.welcomeBack")}
       </p>
 
       <div className="mt-8 space-y-5">
@@ -113,7 +115,8 @@ export default function LoginForm() {
         <input
           type="email"
           name="email"
-          placeholder="Email"
+          placeholder={t("auth.email")}
+          aria-label={t("auth.email")}
           value={form.email}
           onChange={update}
           className="w-full rounded-xl border p-4"
@@ -122,7 +125,8 @@ export default function LoginForm() {
         <input
           type="password"
           name="password"
-          placeholder="Password"
+          placeholder={t("auth.password")}
+          aria-label={t("auth.password")}
           value={form.password}
           onChange={update}
           className="w-full rounded-xl border p-4"
@@ -139,12 +143,12 @@ export default function LoginForm() {
         {loading ? (
           <>
             <Loader2 className="h-5 w-5 animate-spin" />
-            Signing In...
+            {t("auth.signingIn")}
           </>
         ) : (
           <>
             <LogIn className="h-5 w-5" />
-            Login
+            {t("auth.login")}
           </>
         )}
 
@@ -152,13 +156,13 @@ export default function LoginForm() {
 
       <p className="mt-6 text-center text-slate-500">
 
-        Don't have an account?
+        {t("auth.noAccount")}
 
         <Link
           href="/signup"
           className="ml-2 font-semibold text-blue-600"
         >
-          Create Account
+          {t("auth.createAccount")}
         </Link>
 
       </p>

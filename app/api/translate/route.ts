@@ -40,12 +40,13 @@ export async function POST(
       });
     }
 
-    return NextResponse.json({
-      success: true,
-
-      translatedText:
-        "Translation API integration will appear here.",
-    });
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Translation service is not configured.",
+      },
+      { status: 503 }
+    );
 
   } catch (error) {
 

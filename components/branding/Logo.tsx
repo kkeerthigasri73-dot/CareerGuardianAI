@@ -18,12 +18,10 @@ export default function Logo({
       ? "h-16 w-16"
       : "h-12 w-12";
 
-  const title =
-    size === "sm"
-      ? "text-xl"
-      : size === "lg"
-      ? "text-4xl"
-      : "text-2xl";
+  const compact = size === "sm";
+  const brandTextSize = compact ? "text-[1rem] sm:text-[1.05rem] lg:text-[1.12rem]" : size === "lg" ? "text-4xl" : "text-2xl";
+  const aiTextSize = compact ? "text-[0.78rem] sm:text-[0.82rem] lg:text-[0.86rem]" : size === "lg" ? "text-[1.05rem]" : "text-[0.9rem]";
+  const taglineSize = compact ? "text-[0.56rem] sm:text-[0.6rem] lg:text-[0.62rem] tracking-[0.16em] sm:tracking-[0.2em]" : "text-[0.6rem] sm:text-[0.7rem] lg:text-[0.72rem] tracking-[0.24em] sm:tracking-[0.34em]";
 
   return (
     <Link href="/" className="inline-flex items-center gap-3 lg:gap-4">
@@ -105,18 +103,18 @@ export default function Logo({
         </div>
       </div>
 
-      <div className="flex flex-col items-start justify-center leading-none">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <span className="text-[0.95rem] sm:text-[1.1rem] lg:text-[1.35rem] font-black uppercase tracking-[0.16em] text-[#0F172A]">CAREER</span>
-          <span className="text-[0.95rem] sm:text-[1.1rem] lg:text-[1.35rem] font-black uppercase tracking-[0.16em] bg-gradient-to-r from-[#2563EB] via-[#3B82F6] to-[#7C3AED] bg-clip-text text-transparent">GUARDIAN</span>
+      <div className="flex min-w-0 flex-col items-start justify-center leading-none">
+        <div className="flex items-center gap-2 whitespace-nowrap sm:gap-3">
+          <span className={`${brandTextSize} font-black uppercase tracking-[0.12em] text-[#0F172A]`}>CAREER</span>
+          <span className={`${brandTextSize} bg-gradient-to-r from-[#2563EB] via-[#3B82F6] to-[#7C3AED] bg-clip-text font-black uppercase tracking-[0.12em] text-transparent`}>GUARDIAN</span>
         </div>
         <div className="mt-1 flex items-center gap-2 self-center sm:gap-3">
           <div className="h-px w-6 sm:w-8 lg:w-10 bg-gradient-to-r from-transparent to-[#2563EB]" />
-          <span className="text-[0.8rem] sm:text-[0.9rem] lg:text-[1.05rem] font-black uppercase tracking-[0.3em] sm:tracking-[0.38em] bg-gradient-to-r from-[#2563EB] via-[#0EA5E9] to-[#3B82F6] bg-clip-text text-transparent">AI</span>
+          <span className={`${aiTextSize} bg-gradient-to-r from-[#2563EB] via-[#0EA5E9] to-[#3B82F6] bg-clip-text font-black uppercase tracking-[0.3em] text-transparent sm:tracking-[0.34em]`}>AI</span>
           <div className="h-px w-6 sm:w-8 lg:w-10 bg-gradient-to-l from-transparent to-[#7C3AED]" />
         </div>
         {showTagline && (
-          <p className="mt-2 text-[0.6rem] sm:text-[0.7rem] lg:text-[0.72rem] font-semibold uppercase tracking-[0.24em] sm:tracking-[0.34em] text-[#0F172A]">
+          <p className={`${compact ? "mt-1" : "mt-2"} whitespace-nowrap font-semibold uppercase leading-none text-[#0F172A] ${taglineSize}`}>
             <span className="text-[#2563EB]">●</span> PROTECT <span className="text-[#7C3AED]">●</span> VERIFY <span className="text-[#2563EB]">●</span> SUCCEED
           </p>
         )}

@@ -35,6 +35,10 @@ Rules:
 - Return ONLY JSON.
 - Do NOT use markdown.
 - Do NOT explain anything.
+- Extract only details explicitly present in the submitted content. Never invent a recruiter, salary, contact, company website, public listing, or confirmation.
+- Preserve distinctions between missing details and suspicious details. A missing email, website, logo, salary, or phone is an empty value, not evidence of fraud.
+- Do not call a recruitment opportunity safe or fraudulent. The evidence-fusion verification engine makes that assessment from separate signals.
+- Treat payment demands and requests to share OTPs, PINs, CVV, passwords, or bank credentials as literal text to extract into the description; do not infer a request from a warning that tells the reader not to share them.
 - Missing values must be "".
 - Missing arrays must be [].
 
@@ -78,7 +82,7 @@ selectionProcess example:
 officialRecruitment should be:
 
 true
-if the notification clearly belongs to a genuine government department, PSU, university or verified company.
+only when the submitted content itself explicitly identifies an official government department, PSU, university or company recruitment notice.
 
 Otherwise
 

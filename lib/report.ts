@@ -1,4 +1,4 @@
-import jsPDF from "jspdf";
+﻿import jsPDF from "jspdf";
 
 type ReportLayer = {
   layer?: number;
@@ -8,16 +8,60 @@ type ReportLayer = {
   score?: number;
   message?: string;
   status?: string;
+  state?: string;
 };
 
 type ReportData = {
+  inputType?: string;
+  recording?: {
+    mediaType?: string;
+    mediaMetadata?: { fileName?: string; mimeType?: string; sizeBytes?: number; lastModified?: number };
+    duration?: number;
+    transcriptLanguage?: string;
+    transcriptSegments?: Array<{ startTime?: number; text?: string }>;
+    keyEvidence?: Array<{ startTime?: number; category?: string; text?: string; repeatCount?: number; subsequentOccurrences?: number[] }>;
+    repeatedEvidence?: Array<unknown>;
+    recordingRiskSignals?: Record<string, boolean>;
+    recordingSummary?: string;
+  };
+  transcript?: string;
+  cleanTranscript?: string;
+  transcriptSegments?: Array<{ startTime?: number; text?: string }>;
+  keyEvidence?: Array<{ startTime?: number; category?: string; text?: string; repeatCount?: number; subsequentOccurrences?: number[] }>;
+  repeatedEvidence?: Array<unknown>;
+  recordingRiskSignals?: Record<string, boolean>;
+  recordingSummary?: string;
+  mediaType?: string;
+  recordingDuration?: number;
+  transcriptLanguage?: string;
   verification?: {
     trustScore?: number;
+    riskScore?: number;
+    verificationConfidence?: number;
+    sourceConfidence?: number;
+    evidenceCoverage?: number;
+    sourceLabel?: string;
+    positiveSignals?: string[];
+    negativeSignals?: string[];
+    missingSignals?: string[];
+    recommendedAction?: string;
+    sourceType?: string;
+    independentConfirmation?: { status?: string; channel?: string };
+    inputType?: string;
+    inputMethod?: string;
     verdict?: string;
     layers?: ReportLayer[];
     id?: string;
     _id?: string;
     createdAt?: string;
+    guardianTrustCheck?: {
+      organizationStatus?: string;
+      opportunityStatus?: string;
+      checks?: { companyIdentityRegistry?: string; specificOpportunityPosting?: string; independentConfirmation?: string };
+      supportingEvidence?: string[];
+      conflictingEvidence?: string[];
+      missingEvidence?: string[];
+    };
   };
   company?: string;
   jobRole?: string;
@@ -86,7 +130,7 @@ function footer(doc: jsPDF, data: ReportData, page: number, generatedAt: string)
   doc.setFont("helvetica", "normal"); setText(doc, COLORS.muted); doc.text("Verify before you trust. Protect before you proceed.", MARGIN, y + 4);
   doc.text(`ID: ${clean(data.verification?.id || data.verification?._id)}`, PAGE_WIDTH / 2, y, { align: "center" });
   doc.text(`Generated: ${generatedAt}`, PAGE_WIDTH - MARGIN, y, { align: "right" });
-  doc.setFontSize(6.5); doc.text("AI-Assisted Recruitment Investigation  •  12-Layer Verification  •  Evidence-Based Analysis", PAGE_WIDTH / 2, y + 8, { align: "center" });
+  doc.setFontSize(6.5); doc.text("AI-Assisted Recruitment Investigation  â€¢  12-Layer Verification  â€¢  Evidence-Based Analysis", PAGE_WIDTH / 2, y + 8, { align: "center" });
   doc.setFontSize(7); doc.text(`Page ${page} of 5`, PAGE_WIDTH - MARGIN, y + 8, { align: "right" });
 }
 function getLayers(data: ReportData) {
@@ -94,6 +138,10 @@ function getLayers(data: ReportData) {
 }
 function layerStatus(layer: ReportLayer) {
   const explicit = clean(layer.status, "").toUpperCase();
+  const state = clean(layer.state, "").toUpperCase();
+  if (state === "HIGH_RISK") return "HIGH RISK";
+  if (["NOT_PROVIDED", "NOT_APPLICABLE", "NOT_VERIFIED", "NOT_DETECTED"].includes(state)) return "REVIEW";
+  if (["PASS", "REVIEW"].includes(state)) return state;
   if (["PASS", "FAIL", "REVIEW"].includes(explicit)) return explicit;
   if (layer.passed) return "PASS";
   const message = clean(layer.message, "").toLowerCase();
@@ -102,7 +150,7 @@ function layerStatus(layer: ReportLayer) {
 function statusStyle(status: string) {
   if (status === "PASS") return { color: COLORS.green, fill: [240, 253, 244] as Rgb };
   if (status === "REVIEW") return { color: COLORS.amber, fill: [255, 251, 235] as Rgb };
-  if (status === "FAIL") return { color: COLORS.red, fill: [254, 242, 242] as Rgb };
+  if (status === "FAIL" || status === "HIGH RISK") return { color: COLORS.red, fill: [254, 242, 242] as Rgb };
   return { color: COLORS.muted, fill: COLORS.pale };
 }
 function scoreValue(data: ReportData) {
@@ -139,7 +187,8 @@ export function generateReport(input: ReportData) {
   const verdict = clean(data.verification?.verdict, "REVIEW").toUpperCase();
   const generatedAt = new Date(data.generatedAt || Date.now()).toLocaleString();
   const positiveLayers = layers.filter((layer) => layerStatus(layer) === "PASS");
-  const riskLayers = layers.filter((layer) => layerStatus(layer) !== "PASS");
+  const riskLayers = layers.filter((layer) => ["FAIL", "HIGH RISK"].includes(layerStatus(layer)));
+  const missingLayers = layers.filter((layer) => layerStatus(layer) === "REVIEW");
   const passedCount = positiveLayers.length;
   const reviewCount = layers.filter((layer) => layerStatus(layer) === "REVIEW").length;
 
@@ -157,7 +206,7 @@ export function generateReport(input: ReportData) {
 
   roundedCard(doc, MARGIN, 61, CONTENT_WIDTH, 67, [247, 251, 255], [207, 226, 247]);
   drawScore(doc, score, 49, 94);
-  const verdictStyle = statusStyle(verdict === "SAFE" ? "PASS" : verdict === "REVIEW" ? "REVIEW" : "FAIL");
+  const verdictStyle = statusStyle(["SAFE", "LOW RISK"].includes(verdict) ? "PASS" : ["REVIEW", "SUSPICIOUS"].includes(verdict) ? "REVIEW" : "FAIL");
   setFill(doc, verdictStyle.fill);
   doc.roundedRect(78, 73, 38, 10, 3, 3, "F");
   doc.setFont("helvetica", "bold");
@@ -197,7 +246,7 @@ export function generateReport(input: ReportData) {
     const x = MARGIN + (index % 3) * 60;
     const y = 200 + Math.floor(index / 3) * 25;
     const selected = layers.filter((layer) => numbers.includes(Number(layer.layer)));
-    const status = selected.length && selected.every((layer) => layerStatus(layer) === "PASS") ? "PASS" : selected.some((layer) => layerStatus(layer) === "FAIL") ? "FAIL" : "REVIEW";
+    const status = selected.length && selected.every((layer) => layerStatus(layer) === "PASS") ? "PASS" : selected.some((layer) => ["FAIL", "HIGH RISK"].includes(layerStatus(layer))) ? "HIGH RISK" : "REVIEW";
     const style = statusStyle(status);
     roundedCard(doc, x, y, 55, 19, style.fill, COLORS.line);
     doc.setFont("helvetica", "bold");
@@ -251,7 +300,7 @@ export function generateReport(input: ReportData) {
     const y = 63 + index * flowStepHeight;
     const isFinal = index === flowLabels.length - 1;
     const layer = layers[index - 1];
-    const status = layer ? layerStatus(layer) : isFinal ? (verdict === "SAFE" ? "PASS" : "REVIEW") : "REVIEW";
+    const status = layer ? layerStatus(layer) : isFinal ? (["SAFE", "LOW RISK"].includes(verdict) ? "PASS" : ["REVIEW", "SUSPICIOUS"].includes(verdict) ? "REVIEW" : "HIGH RISK") : "REVIEW";
     const style = statusStyle(status);
     setStroke(doc, index === 0 ? COLORS.cyan : COLORS.line);
     doc.setLineWidth(0.8);
@@ -307,13 +356,39 @@ export function generateReport(input: ReportData) {
       y += height + 3;
     });
   });
+  sectionLabel(doc, "Missing / not verified", MARGIN, 164);
+  writeWrapped(doc, missingLayers.length ? missingLayers.map((layer) => `${clean(layer.title || layer.name)}: ${clean(layer.message)}`).join("  â€¢  ") : "No missing evidence was recorded.", MARGIN, 171, CONTENT_WIDTH, 7.5, COLORS.muted);
+  const guardianCheck = data.verification?.guardianTrustCheck;
+  if (data.inputType === "recording" || data.verification?.inputType === "recording") {
+    sectionLabel(doc, "Recording evidence", MARGIN, 200);
+    const duration = Number(data.recordingDuration || data.recording?.duration || 0);
+    const evidence = data.keyEvidence || data.recording?.keyEvidence || [];
+    const segments = data.transcriptSegments || data.recording?.transcriptSegments || [];
+    writeWrapped(doc, `Analyzed: Yes  |  Type: ${clean(data.mediaType || data.recording?.mediaType, "Audio")}  |  Duration: ${duration ? `${Math.floor(duration / 60)}:${String(Math.floor(duration % 60)).padStart(2, "0")}` : "Unavailable"}  |  Transcript language: ${clean(data.transcriptLanguage || data.recording?.transcriptLanguage, "Unknown")}  |  Segments: ${segments.length}  |  Key statements: ${evidence.length}  |  Repeated statements: ${(data.repeatedEvidence || data.recording?.repeatedEvidence || []).length}`, MARGIN, 207, CONTENT_WIDTH, 7, COLORS.ink);
+    evidence.slice(0, 3).forEach((item, index) => {
+      const at = Number(item.startTime || 0);
+      const stamp = `${String(Math.floor(at / 60)).padStart(2, "0")}:${String(Math.floor(at % 60)).padStart(2, "0")}`;
+      writeWrapped(doc, `${stamp} · ${clean(item.category, "Relevant statement")}${item.repeatCount && item.repeatCount > 1 ? ` · repeated ${item.repeatCount} times` : ""}: “${clean(item.text)}”`, MARGIN, 220 + index * 16, CONTENT_WIDTH, 7, COLORS.ink);
+    });
+    if (guardianCheck) writeWrapped(doc, `Additional company check: ${clean(guardianCheck.organizationStatus)}. Opportunity: ${clean(guardianCheck.opportunityStatus)}.`, MARGIN, 270, CONTENT_WIDTH, 7, COLORS.muted);
+  } else if (guardianCheck) {
+    sectionLabel(doc, "Second-stage company & opportunity cross-check", MARGIN, 200);
+    writeWrapped(doc, `Organization: ${clean(guardianCheck.organizationStatus)}. Opportunity: ${clean(guardianCheck.opportunityStatus)}. Company identity: ${clean(guardianCheck.checks?.companyIdentityRegistry)}. Specific posting: ${clean(guardianCheck.checks?.specificOpportunityPosting)}.`, MARGIN, 207, CONTENT_WIDTH, 7.5, COLORS.ink);
+  }
   footer(doc, data, 4, generatedAt);
 
   // Page 5: timeline and assessment
   doc.addPage();
   pageTitle(doc, "Audit trail", "Investigation Timeline", 5);
   writeWrapped(doc, "An ordered processing record is shown because exact processing timestamps are not part of the verification response.", MARGIN, 52, 175, 9, COLORS.muted);
+  const inputSource = data.inputType === "recording" || data.verification?.inputType === "recording"
+    ? `Recruitment ${clean(data.mediaType, "audio")} recording — timestamped transcript available`
+    : data.verification?.inputType === "whatsapp"
+    ? `WhatsApp Conversation â€” ${data.verification?.inputMethod === "ocr" ? "OCR Extracted" : "Pasted Text"}`
+    : data.verification?.inputMethod === "ocr" ? "Recruitment Screenshot / Document â€” OCR Extracted"
+    : data.verification?.inputMethod === "text" ? "Recruitment Message â€” Pasted Text" : "Input source not recorded";
   const timeline = [
+    inputSource,
     "Document uploaded",
     "OCR extraction completed",
     "Organization identified",
@@ -346,13 +421,14 @@ export function generateReport(input: ReportData) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   setText(doc, COLORS.muted);
-  doc.text("Final trust score", MARGIN + 8, 247);
+  doc.text("Evidence-adjusted trust score", MARGIN + 8, 247);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
   setText(doc, COLORS.blue);
   doc.text(score === null ? "Not available" : `${score}%`, MARGIN + 8, 255);
-  writeWrapped(doc, "This assessment reflects the evidence returned by the verification engine and is not a legal conclusion or guarantee.", 86, 235, 105, 8.5, COLORS.ink);
+  writeWrapped(doc, `Risk ${clean(data.verification?.riskScore, "Not available")}%; verification confidence ${clean(data.verification?.verificationConfidence, "Not available")}%; source confidence ${clean(data.verification?.sourceConfidence, "Not available")}%; evidence coverage ${clean(data.verification?.evidenceCoverage, "Not available")}%. ${clean(data.verification?.recommendedAction)}`, 86, 235, 105, 7.5, COLORS.ink);
   footer(doc, data, 5, generatedAt);
 
   doc.save("CareerGuardian_Recruitment_Investigation_Report.pdf");
 }
+

@@ -15,6 +15,14 @@ export default function EditProfile() {
     cgpa: "",
     skills: "",
     careerGoal: "",
+    professionalTitle: "",
+    phone: "",
+    location: "",
+    linkedin: "",
+    github: "",
+    portfolio: "",
+    photoUrl: "",
+    references: "",
   });
 
   useEffect(() => {
@@ -36,6 +44,14 @@ export default function EditProfile() {
         cgpa: json.user.cgpa || "",
         skills: json.user.skills?.join(", ") || "",
         careerGoal: json.user.careerGoal || "",
+        professionalTitle: json.user.professionalTitle || "",
+        phone: json.user.phone || "",
+        location: json.user.location || "",
+        linkedin: json.user.linkedin || "",
+        github: json.user.github || "",
+        portfolio: json.user.portfolio || "",
+        photoUrl: json.user.photoUrl || "",
+        references: json.user.references?.join("\n") || "",
       });
     }
   }
@@ -65,6 +81,7 @@ export default function EditProfile() {
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
+        references: form.references.split(/\n|,/).map((item) => item.trim()).filter(Boolean),
       }),
     });
 
@@ -130,6 +147,14 @@ export default function EditProfile() {
           onChange={update}
         />
 
+          <Input label="Professional title / Career goal" name="professionalTitle" value={form.professionalTitle} onChange={update} />
+          <Input label="Phone" name="phone" value={form.phone} onChange={update} />
+          <Input label="Location" name="location" value={form.location} onChange={update} />
+          <Input label="LinkedIn URL" name="linkedin" value={form.linkedin} onChange={update} />
+          <Input label="GitHub URL" name="github" value={form.github} onChange={update} />
+          <Input label="Portfolio URL" name="portfolio" value={form.portfolio} onChange={update} />
+          <Input label="Profile photo URL (optional)" name="photoUrl" value={form.photoUrl} onChange={update} />
+
       </div>
 
       <div className="mt-6">
@@ -146,6 +171,11 @@ export default function EditProfile() {
           className="w-full rounded-xl border p-4"
         />
 
+      </div>
+
+      <div className="mt-6">
+        <label className="mb-2 block font-semibold">References (optional, one per line)</label>
+        <textarea rows={3} name="references" value={form.references} onChange={update} className="w-full rounded-xl border p-4" placeholder="Add only references you have permission to share." />
       </div>
 
       <div className="mt-6">

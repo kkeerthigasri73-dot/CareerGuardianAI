@@ -26,16 +26,20 @@ const languages = [
   { code: "kn", name: "ಕನ್ನಡ (Kannada)" },
 ];
 
+const notificationCategories = [
+  { value: "new-openings", labelKey: "settings.newOpenings" },
+  { value: "internships", labelKey: "settings.internships" },
+  { value: "remote", labelKey: "settings.remote" },
+  { value: "career-recommendations", labelKey: "settings.careerRecommendations" },
+] as const;
+
 export default function SettingsPage() {
   const { language, setLanguage, t } = useLanguage();
-  const [selectedLanguage, setSelectedLanguage] = useState(language);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [saved, setSaved] = useState(false);
   const [jobSettings, setJobSettings] = useState({ enabled: false, frequency: "daily", minimumMatchScore: 60, categories: ["new-openings", "career-recommendations"] });
 
   useEffect(() => {
-    setSelectedLanguage(language);
-
     const savedVoice =
       localStorage.getItem("guardian-voice");
 
@@ -45,11 +49,9 @@ export default function SettingsPage() {
     fetch("/api/settings/notifications", { cache: "no-store" }).then((response) => response.ok ? response.json() : null).then((result) => {
       if (result?.preferences) setJobSettings(result.preferences);
     }).catch(() => undefined);
-  }, [language]);
+  }, []);
 
   function saveSettings() {
-    setLanguage(selectedLanguage);
-
     localStorage.setItem(
       "guardian-voice",
       String(voiceEnabled)
@@ -71,15 +73,7 @@ export default function SettingsPage() {
   function testVoice() {
     if (!voiceEnabled) return;
 
-    const selected =
-      languages.find(
-        (item) => item.code === selectedLanguage
-      );
-
-    speakText(
-      `CareerGuardian AI. Your selected language is ${selected?.name}`,
-      selectedLanguage
-    );
+    speakText(t("voiceTestMessage"), language);
   }
 
   return (
@@ -93,7 +87,7 @@ export default function SettingsPage() {
         >
           <ArrowLeft className="h-4 w-4" />
 
-          {t("back")} to Dashboard
+          {t("back")} {t("dashboard")}
         </Link>
 
         <div className="mt-8">
@@ -129,14 +123,14 @@ export default function SettingsPage() {
         <div className="mt-6 rounded-3xl bg-white p-8 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="rounded-2xl bg-cyan-100 p-3"><Bell className="h-7 w-7 text-cyan-700" /></div>
-            <div><h2 className="text-2xl font-black text-slate-900">Job Opportunity Notifications</h2><p className="mt-1 text-slate-500">Receive relevant openings matched to your Career DNA.</p></div>
-            <button type="button" aria-label="Enable job notifications" onClick={() => setJobSettings((prev) => ({ ...prev, enabled: !prev.enabled }))} className={`relative ml-auto h-9 w-16 rounded-full transition ${jobSettings.enabled ? "bg-cyan-600" : "bg-slate-300"}`}><span className={`absolute top-1 h-7 w-7 rounded-full bg-white shadow transition ${jobSettings.enabled ? "left-8" : "left-1"}`} /></button>
+            <div><h2 className="text-2xl font-black text-slate-900">{t("settings.notificationsTitle")}</h2><p className="mt-1 text-slate-500">{t("settings.notificationsDescription")}</p></div>
+            <button type="button" aria-label={t("settings.enableNotifications")} onClick={() => setJobSettings((prev) => ({ ...prev, enabled: !prev.enabled }))} className={`relative ml-auto h-9 w-16 rounded-full transition ${jobSettings.enabled ? "bg-cyan-600" : "bg-slate-300"}`}><span className={`absolute top-1 h-7 w-7 rounded-full bg-white shadow transition ${jobSettings.enabled ? "left-8" : "left-1"}`} /></button>
           </div>
           <div className="mt-7 grid gap-5 md:grid-cols-2">
-            <label className="font-bold text-slate-700">Notification Frequency<select value={jobSettings.frequency} onChange={(event) => setJobSettings((prev) => ({ ...prev, frequency: event.target.value }))} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 p-4"><option value="instant">Instant</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></label>
-            <label className="font-bold text-slate-700">Minimum Job Match Score: {jobSettings.minimumMatchScore}%<input type="range" min="0" max="100" value={jobSettings.minimumMatchScore} onChange={(event) => setJobSettings((prev) => ({ ...prev, minimumMatchScore: Number(event.target.value) }))} className="mt-4 w-full accent-cyan-600" /></label>
+            <label className="font-bold text-slate-700">{t("settings.frequency")}<select value={jobSettings.frequency} onChange={(event) => setJobSettings((prev) => ({ ...prev, frequency: event.target.value }))} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 p-4"><option value="instant">{t("settings.instant")}</option><option value="daily">{t("settings.daily")}</option><option value="weekly">{t("settings.weekly")}</option></select></label>
+            <label className="font-bold text-slate-700">{t("settings.minimumMatchScore")}: {jobSettings.minimumMatchScore}%<input type="range" min="0" max="100" value={jobSettings.minimumMatchScore} onChange={(event) => setJobSettings((prev) => ({ ...prev, minimumMatchScore: Number(event.target.value) }))} className="mt-4 w-full accent-cyan-600" /></label>
           </div>
-          <div className="mt-6"><p className="font-bold text-slate-700">Notification Categories</p><div className="mt-3 flex flex-wrap gap-2">{[["new-openings", "New Job Openings"], ["internships", "Internship Opportunities"], ["remote", "Remote Opportunities"], ["career-recommendations", "Career Recommendations"]].map(([value, label]) => <label key={value} className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm"><input type="checkbox" checked={jobSettings.categories.includes(value)} onChange={() => setJobSettings((prev) => ({ ...prev, categories: prev.categories.includes(value) ? prev.categories.filter((item) => item !== value) : [...prev.categories, value] }))} />{label}</label>)}</div></div>
+          <div className="mt-6"><p className="font-bold text-slate-700">{t("settings.categories")}</p><div className="mt-3 flex flex-wrap gap-2">{notificationCategories.map(({ value, labelKey }) => <label key={value} className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm"><input type="checkbox" checked={jobSettings.categories.includes(value)} onChange={() => setJobSettings((prev) => ({ ...prev, categories: prev.categories.includes(value) ? prev.categories.filter((item) => item !== value) : [...prev.categories, value] }))} />{t(labelKey)}</label>)}</div></div>
         </div>
 
         {/* LANGUAGE */}
@@ -178,10 +172,8 @@ export default function SettingsPage() {
             </label>
 
             <select
-              value={selectedLanguage}
-              onChange={(event) =>
-                setSelectedLanguage(event.target.value as typeof selectedLanguage)
-              }
+              value={language}
+              onChange={(event) => setLanguage(event.target.value)}
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 font-semibold outline-none focus:border-blue-500"
             >
 

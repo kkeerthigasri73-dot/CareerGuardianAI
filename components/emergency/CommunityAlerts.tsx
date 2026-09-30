@@ -235,6 +235,10 @@ export default function CommunityAlerts() {
 
                     </p>
 
+                    <p className="mt-2 text-sm text-slate-500">
+                      Location: {alert.location || "Not provided"} · Categories: {(alert.categories || []).join(", ") || "Not specified"}
+                    </p>
+
                     {/* REPORT COUNT */}
 
                     <div className="mt-4 flex flex-wrap items-center gap-4">
