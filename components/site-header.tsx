@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Radar,
   FileText,
+  TriangleAlert,
   GraduationCap,
   Mic2,
   Bot,
@@ -212,6 +213,7 @@ export function SiteHeader() {
                 : "text-slate-700 hover:bg-slate-100 hover:text-cyan-700"
             }`}
           >
+            <TriangleAlert aria-hidden="true" className="mr-2 h-4 w-4" />
             {t("recover")}
           </Link>
 
@@ -279,7 +281,7 @@ export function SiteHeader() {
             <Link
               href="/"
               onClick={closeNavigation}
-              className={`block rounded-xl px-4 py-3 text-sm font-semibold transition ${
+              className={`flex items-center rounded-xl px-4 py-3 text-sm font-semibold transition ${
                 isActive("/")
                   ? "bg-indigo-50 text-indigo-700"
                   : "text-slate-700 hover:bg-slate-100 hover:text-blue-600"
@@ -329,6 +331,7 @@ export function SiteHeader() {
                   : "text-slate-700 hover:bg-slate-100 hover:text-blue-600"
               }`}
             >
+              <TriangleAlert aria-hidden="true" className="mr-3 h-4 w-4" />
               {t("recover")}
             </Link>
 

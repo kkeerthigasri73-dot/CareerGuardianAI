@@ -68,8 +68,8 @@ export default function EmergencyWizard({ open, onClose, onFinish }: Props) {
             <AlertTriangle className="h-10 w-10 text-yellow-300" />
           </div>
           <div>
-            <h2 className="text-3xl font-bold">Guardian Recover</h2>
-            <p className="text-sm text-red-100">Five intelligent questions to trigger your recovery workflow.</p>
+            <h2 className="text-3xl font-bold">Raise a Complaint</h2>
+            <p className="text-sm text-red-100">Report fraud, preserve evidence & start recovery.</p>
           </div>
         </div>
 

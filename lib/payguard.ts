@@ -12,7 +12,7 @@ export interface PayGuardResult {
   ifscCodes: string[];
   paymentChannel: { type: "OFFICIAL_PORTAL" | "UPI" | "BANK_TRANSFER" | "QR" | "UNKNOWN"; officialEvidence: boolean; status: "SUPPORTED" | "UNVERIFIED" | "NONE" };
   qr: { detected: boolean; status: "DECODED" | "QR_DETECTED_BUT_NOT_DECODED" | "NOT_DETECTED" | "UNAVAILABLE" };
-  qrEvidence: { upiId?: string; payeeName?: string; amount?: string; paymentUrl?: string };
+  qrEvidence: { upiId?: string; payeeName?: string; amount?: string; currency?: string; transactionReference?: string; paymentUrl?: string };
   severity: PayGuardSeverity;
   riskContribution: number;
   verificationStatus: string;
@@ -33,6 +33,8 @@ export interface PaymentFraudDetection {
   qrPayload: string | null;
   qrPayeeName: string | null;
   qrAmount: string | null;
+  qrCurrency: string | null;
+  qrTransactionReference: string | null;
   paymentUrl: string | null;
   governmentRecruitmentClaim: boolean;
   paymentContext: "NONE" | "OFFICIAL_PORTAL" | "RECRUITMENT_PAYMENT" | "PERSONAL_PAYMENT" | "UNKNOWN";
@@ -95,6 +97,8 @@ export function analyzePayGuard(input: Record<string, unknown>): PayGuardResult 
   const decodedUpi = qrParams?.get("pa") || null;
   const decodedPayee = qrParams?.get("pn") || undefined;
   const decodedAmount = qrParams?.get("am") || undefined;
+  const decodedCurrency = qrParams?.get("cu") || undefined;
+  const decodedTransactionReference = qrParams?.get("tr") || undefined;
   const decodedUrl = decodedPayloads.find((value) => /^https?:\/\//i.test(value)) || qrParams?.get("url") || undefined;
   const allUpi = [...new Set([...upiIds.map((id) => id.value), ...(decodedUpi ? [decodedUpi] : [])])];
   const purposeLabels = [...new Set((text.match(/registration fee|application fee|security deposit|refundable deposit|interview (?:fee|slot)|document verification fee|background verification fee|medical examination fee|training fee|processing fee|onboarding fee|laptop fee|equipment fee|uniform fee|ID card fee|gate pass fee|joining fee|placement fee|certificate verification fee|courier fee|dispatch fee|account activation fee/gi) || []).map((item) => item.toLowerCase()))];
@@ -130,8 +134,8 @@ export function analyzePayGuard(input: Record<string, unknown>): PayGuardResult 
     bankAccounts: accounts,
     ifscCodes: ifscs,
     paymentChannel: { type: channelType, officialEvidence: officialContext, status: hasPayment && officialContext ? "SUPPORTED" : hasPayment ? "UNVERIFIED" : "NONE" },
-    qr: { detected: Boolean(uri || qrMention), status: decodedPayloads.length || uri ? "DECODED" : qrMention ? "QR_DETECTED_BUT_NOT_DECODED" : input.qrScanStatus === "UNAVAILABLE" ? "UNAVAILABLE" : "NOT_DETECTED" },
-    qrEvidence: { ...(decodedUpi ? { upiId: decodedUpi } : {}), ...(decodedPayee ? { payeeName: decodedPayee } : {}), ...(decodedAmount ? { amount: decodedAmount } : {}), ...(decodedUrl ? { paymentUrl: decodedUrl } : {}) },
+    qr: { detected: Boolean(uri || qrMention || input.qrScanStatus === "QR_DETECTED_BUT_NOT_DECODED"), status: decodedPayloads.length || uri ? "DECODED" : qrMention || input.qrScanStatus === "QR_DETECTED_BUT_NOT_DECODED" ? "QR_DETECTED_BUT_NOT_DECODED" : input.qrScanStatus === "UNAVAILABLE" ? "UNAVAILABLE" : "NOT_DETECTED" },
+    qrEvidence: { ...(decodedUpi ? { upiId: decodedUpi } : {}), ...(decodedPayee ? { payeeName: decodedPayee } : {}), ...(decodedAmount ? { amount: decodedAmount } : {}), ...(decodedCurrency ? { currency: decodedCurrency } : {}), ...(decodedTransactionReference ? { transactionReference: decodedTransactionReference } : {}), ...(decodedUrl ? { paymentUrl: decodedUrl } : {}) },
     severity,
     riskContribution,
     verificationStatus: !text ? "UNKNOWN" : !hasPayment ? "NO_PAYMENT_DETECTED" : legitimateFee ? "OFFICIAL_CHANNEL_CONTEXT_REVIEW" : severity === "REVIEW" ? "REVIEW" : "FINANCIAL_RISK_DETECTED",
@@ -186,6 +190,8 @@ export function toPaymentFraudDetection(result: PayGuardResult): PaymentFraudDet
     qrPayload: result.qrEvidence.upiId || null,
     qrPayeeName: result.qrEvidence.payeeName || null,
     qrAmount: result.qrEvidence.amount || null,
+    qrCurrency: result.qrEvidence.currency || null,
+    qrTransactionReference: result.qrEvidence.transactionReference || null,
     paymentUrl: result.qrEvidence.paymentUrl || null,
     paymentContext,
     destinationType: finalDestinationType,

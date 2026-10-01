@@ -11,6 +11,8 @@ export async function POST(req: Request) {
     const inputMethod = body.inputMethod === "url" ? "url" : body.inputMethod === "text" ? "text" : "ocr";
     const maxTextLength = body.inputType === "recording" ? 100000 : 30000;
     let extractedText = "";
+    const extractedDocumentText = typeof body.extractedDocumentText === "string" ? body.extractedDocumentText : "";
+    const ocrImages = Array.isArray(body.ocrImages) ? body.ocrImages.filter((value: unknown): value is string => typeof value === "string").slice(0, 12) : [];
 
     if (inputMethod === "text" || inputMethod === "url") {
       const rawInput = typeof body.text === "string" ? body.text : typeof body.url === "string" ? `Recruitment opportunity URL: ${body.url}` : "";
@@ -31,6 +33,19 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Please provide more of the conversation or recruitment message so CareerGuardian AI can analyze meaningful context." }, { status: 400 });
       }
       extractedText = normalized;
+    } else if (extractedDocumentText.trim()) {
+      extractedText = extractedDocumentText.trim().slice(0, maxTextLength);
+    } else if (ocrImages.length) {
+      const pageTexts: string[] = [];
+      for (const pageImage of ocrImages) {
+        try {
+          const pageText = await extractTextFromOCR(pageImage, "image/jpeg");
+          if (pageText.trim()) pageTexts.push(pageText.trim());
+        } catch {
+          continue;
+        }
+      }
+      extractedText = pageTexts.join("\n").slice(0, maxTextLength);
     } else if (!image) {
       return NextResponse.json(
         {

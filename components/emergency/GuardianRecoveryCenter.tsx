@@ -462,11 +462,11 @@ export default function GuardianRecoveryCenter() {
           <section className="rounded-2xl border border-blue-200 bg-white p-8 shadow-lg sm:p-12">
             <div className="max-w-3xl">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><ShieldCheck /></div>
-              <h1 className="mt-7 text-4xl font-bold text-slate-950">Guardian Recovery Center</h1>
-              <p className="mt-4 text-lg text-slate-600">Recover safely. Preserve evidence. Take the right action.</p>
+              <h1 className="mt-7 text-4xl font-bold text-slate-950">Raise a Complaint</h1>
+              <p className="mt-4 text-lg text-slate-600">Report fraud, preserve evidence &amp; start recovery.</p>
               <p className="mt-4 max-w-2xl leading-7 text-slate-600">Start by confirming what happened. A recruitment verification does not automatically mean money was lost, and no recovery action will be taken without your input.</p>
               <button type="button" onClick={startRecovery} className="mt-8 inline-flex items-center gap-3 rounded-lg bg-blue-700 px-6 py-4 font-semibold text-white transition hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300">
-                Start Guardian Recovery <ArrowRight className="h-5 w-5" />
+                Raise a Complaint <ArrowRight className="h-5 w-5" />
               </button>
             </div>
           </section>

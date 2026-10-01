@@ -14,8 +14,11 @@ import TrustEngine from "@/components/analyze/TrustEngine";
 import RecordingEvidencePanel from "@/components/analyze/RecordingEvidencePanel";
 import PaymentFraudLayer from "@/components/analyze/PaymentFraudLayer";
 import GovernmentRegistryPanel from "@/components/analyze/GovernmentRegistryPanel";
+import DocumentProvenancePanel from "@/components/analyze/DocumentProvenancePanel";
+import { extractDocumentFacts, type DocumentProvenance } from "@/lib/documentProvenance";
+import { inspectUploadedDocument, renderPdfPagesForOcr } from "@/lib/documentProvenanceClient";
 
-async function decodeUploadedQrCodes(file: File): Promise<{ payloads: string[]; status: "DECODED" | "NOT_DETECTED" | "UNAVAILABLE" }> {
+async function decodeUploadedQrCodes(file: File): Promise<{ payloads: string[]; status: "DECODED" | "QR_DETECTED_BUT_NOT_DECODED" | "NOT_DETECTED" | "UNAVAILABLE" }> {
   const Detector = (window as Window & { BarcodeDetector?: new (options?: { formats?: string[] }) => { detect: (source: ImageBitmap | HTMLCanvasElement) => Promise<Array<{ rawValue?: string; format?: string }>> } }).BarcodeDetector;
   if (!file.type.startsWith("image/") && file.type !== "application/pdf") return { payloads: [], status: "UNAVAILABLE" };
   if (!Detector) return { payloads: [], status: "UNAVAILABLE" };
@@ -23,10 +26,11 @@ async function decodeUploadedQrCodes(file: File): Promise<{ payloads: string[]; 
   try { detector = new Detector({ formats: ["qr_code"] }); }
   catch { return { payloads: [], status: "UNAVAILABLE" }; }
   const payloads = new Set<string>();
+  let qrDetected = false;
   try {
     if (file.type.startsWith("image/")) {
       const bitmap = await createImageBitmap(file);
-      try { for (const item of await detector.detect(bitmap)) if (item.rawValue) payloads.add(item.rawValue.slice(0, 2000)); }
+      try { for (const item of await detector.detect(bitmap)) { qrDetected = true; if (item.rawValue) payloads.add(item.rawValue.slice(0, 2000)); } }
       finally { bitmap.close(); }
     } else {
       const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
@@ -39,14 +43,14 @@ async function decodeUploadedQrCodes(file: File): Promise<{ payloads: string[]; 
         const context = canvas.getContext("2d");
         if (!context) continue;
         await page.render({ canvasContext: context, viewport, canvas }).promise;
-        for (const item of await detector.detect(canvas)) if (item.rawValue) payloads.add(item.rawValue.slice(0, 2000));
+        for (const item of await detector.detect(canvas)) { qrDetected = true; if (item.rawValue) payloads.add(item.rawValue.slice(0, 2000)); }
       }
     }
   } catch {
     return { payloads: [], status: "UNAVAILABLE" };
   }
   const values = [...payloads].slice(0, 10);
-  return { payloads: values, status: values.length ? "DECODED" : "NOT_DETECTED" };
+  return { payloads: values, status: values.length ? "DECODED" : qrDetected ? "QR_DETECTED_BUT_NOT_DECODED" : "NOT_DETECTED" };
 }
 
 async function prepareRecordingAudio(file: File): Promise<{ audioFile: File; mediaType: "audio" | "video"; duration: number }> {
@@ -168,7 +172,10 @@ export default function VerifyPage() {
       let recordingResult: any = null;
       let recordingText = "";
       let decodedQrPayloads: string[] = [];
-      let qrScanStatus: "DECODED" | "NOT_DETECTED" | "UNAVAILABLE" = "UNAVAILABLE";
+      let qrScanStatus: "DECODED" | "QR_DETECTED_BUT_NOT_DECODED" | "NOT_DETECTED" | "UNAVAILABLE" = "UNAVAILABLE";
+      let documentProvenance: DocumentProvenance | null = null;
+      let localPdfText = "";
+      let renderedPdfPages: string[] = [];
       if (selected === "recording" && file) {
         if (file.size > 25 * 1024 * 1024) throw new Error("Recording is too large to process. Choose a supported recording under 25 MB.");
         setRecordingProgress(t("verify.recording.processing", "Extracting audio from the recording…"));
@@ -192,20 +199,36 @@ export default function VerifyPage() {
         const qrScan = await decodeUploadedQrCodes(file);
         decodedQrPayloads = qrScan.payloads;
         qrScanStatus = qrScan.status;
+        const inspected = await inspectUploadedDocument(file, qrScan.status);
+        documentProvenance = inspected.provenance;
+        localPdfText = inspected.extractedText;
+        if (!localPdfText && (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"))) {
+          try { renderedPdfPages = await renderPdfPagesForOcr(file); }
+          catch { renderedPdfPages = []; }
+        }
       }
       const extractPayload: Record<string, unknown> = { inputType, inputMethod: inputMethodValue };
       if (selected === "url") extractPayload.url = jobUrl;
       else if (selected === "recording") { extractPayload.text = recordingText; extractPayload.inputMethod = "text"; }
       else if (textMode) extractPayload.text = pastedText;
       else if (file) {
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
-          reader.onerror = () => reject(new Error("Could not read the selected file."));
-          reader.readAsDataURL(file);
-        });
-        extractPayload.image = base64;
-        extractPayload.mimeType = file.type;
+        if (localPdfText) {
+          extractPayload.extractedDocumentText = localPdfText;
+        } else if (renderedPdfPages.length) {
+          extractPayload.ocrImages = renderedPdfPages;
+        } else {
+          if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+            throw new Error("This PDF could not be read or rendered locally. Try a text-based PDF or upload clear page images.");
+          }
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
+            reader.onerror = () => reject(new Error("Could not read the selected file."));
+            reader.readAsDataURL(file);
+          });
+          extractPayload.image = base64;
+          extractPayload.mimeType = file.type;
+        }
       }
 
       const extractResponse = await fetch("/api/extract", {
@@ -222,12 +245,31 @@ export default function VerifyPage() {
         return;
       }
 
+      const sourceText = localPdfText || extract.text || "";
+      const documentFacts = extractDocumentFacts(sourceText);
+      const extractedCompany = typeof extract.data.company === "string" ? extract.data.company : "";
       const extractedData = {
         ...extract.data,
+        company: extractedCompany || documentFacts.organization || "",
+        jobRole: extract.data.jobRole || documentFacts.recruitmentTitle || "",
+        notificationNumber: extract.data.notificationNumber || documentFacts.notificationNumber || "",
+        applicationStartDate: extract.data.applicationStartDate || documentFacts.applicationOpeningDate || "",
+        applicationClosingDate: extract.data.applicationClosingDate || documentFacts.applicationClosingDate || "",
+        publicationDate: extract.data.publicationDate || documentFacts.publicationDate || "",
+        applicationUrl: extract.data.applicationUrl || documentFacts.applicationUrl || "",
         rawText: extract.text || "",
         decodedQrPayloads,
         qrScanStatus,
-        website: extract.data.website || (selected === "url" ? jobUrl : ""),
+        ...(documentProvenance ? {
+          documentProvenance: {
+            ...documentProvenance,
+            facts: {
+              ...documentFacts,
+              organization: extractedCompany && sourceText.toLowerCase().includes(extractedCompany.toLowerCase()) ? extractedCompany : documentFacts.organization,
+            },
+          },
+        } : {}),
+        website: extract.data.website || (selected === "url" ? jobUrl : documentFacts.applicationUrl || ""),
         description: selected === "recording" ? recordingResult.rawTranscript : inputMethodValue !== "ocr" ? extract.text : extract.data.description || "",
         inputType,
         inputMethod: inputMethodValue,
@@ -451,6 +493,8 @@ export default function VerifyPage() {
               <PaymentFraudLayer result={verification.paymentFraudDetection} />
 
               <GovernmentRegistryPanel result={verification.governmentVerification} />
+
+              <DocumentProvenancePanel result={verification.documentProvenance} payment={verification.paymentFraudDetection} />
 
               <div className="mt-10">
                 <TrustEngine

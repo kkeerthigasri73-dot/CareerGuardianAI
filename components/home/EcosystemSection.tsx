@@ -21,22 +21,22 @@ const layers = [
     icon: ShieldCheck,
   },
   {
-    title: "Guardian Grow",
+    title: "Build Your Career",
     subtitle: "Layer 2",
     description:
       "Build your Career DNA, ATS Resume, Placement Readiness and AI-powered career roadmap.",
-    button: "Explore Grow",
+    button: "Build Your Career",
     href: "/career-dna",
     color: "from-emerald-600 to-green-500",
     bg: "bg-green-50",
     icon: BrainCircuit,
   },
   {
-    title: "Guardian Recover",
+    title: "Raise a Complaint",
     subtitle: "Layer 3",
     description:
-      "Generate complaints, organize evidence, receive SOS guidance and recover faster after recruitment fraud.",
-    button: "Explore Recover",
+      "Report fraud, preserve evidence & start recovery.",
+    button: "Raise a Complaint",
     href: "/emergency",
     color: "from-red-600 to-orange-500",
     bg: "bg-red-50",

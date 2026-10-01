@@ -32,8 +32,8 @@ const storageKeys = {
 
 const introCards = [
   { number: "01", label: "VERIFY", title: "Check before you commit.", description: "Check whether a recruitment opportunity is trustworthy before you apply.", icon: ShieldCheck, color: "cyan" },
-  { number: "02", label: "GROW", title: "Build your next advantage.", description: "Build your Career DNA, improve your resume, practice interviews and discover opportunities.", icon: TrendingUp, color: "blue" },
-  { number: "03", label: "RECOVER", title: "Know what to do next.", description: "Get guidance when you encounter suspicious recruitment activity or a scam.", icon: Radar, color: "violet" },
+  { number: "02", label: "BUILD YOUR CAREER", title: "Build your next advantage.", description: "Build your Career DNA, improve your resume, practice interviews and discover opportunities.", icon: TrendingUp, color: "blue" },
+  { number: "03", label: "RAISE A COMPLAINT", title: "Know what to do next.", description: "Get guidance when you encounter suspicious recruitment activity or a scam.", icon: Radar, color: "violet" },
   { number: "04", label: "AI GUARDIAN", title: "One layer. Every career decision.", description: "One intelligent career protection layer connecting verification, growth and recovery.", icon: BrainCircuit, color: "pink" },
 ] as const;
 

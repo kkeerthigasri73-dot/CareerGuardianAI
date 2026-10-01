@@ -39,7 +39,7 @@ export default function EmergencyFooter() {
 
                 <p className="text-sm text-slate-300">
 
-                  Emergency Recovery Center
+                  Raise a Complaint
 
                 </p>
 

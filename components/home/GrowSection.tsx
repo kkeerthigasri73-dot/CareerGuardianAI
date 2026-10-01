@@ -66,7 +66,7 @@ export default function GrowSection() {
 
           <span className="rounded-full bg-emerald-100 px-5 py-2 text-sm font-semibold text-emerald-700">
 
-            GUARDIAN GROW
+            BUILD YOUR CAREER
 
           </span>
 

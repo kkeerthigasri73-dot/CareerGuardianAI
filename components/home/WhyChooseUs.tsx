@@ -22,7 +22,7 @@ const features = [
     careerGuardian: true,
   },
   {
-    title: "Emergency Recovery Center",
+    title: "Raise a Complaint",
     traditional: false,
     careerGuardian: true,
   },

@@ -1,5 +1,7 @@
 "use client";
 
+import { maskPaymentIdentifier } from "@/lib/documentProvenance";
+
 type PaymentFraudDetection = {
   paymentRequested?: boolean;
   amount?: string | null;
@@ -12,6 +14,8 @@ type PaymentFraudDetection = {
   qrPayload?: string | null;
   qrPayeeName?: string | null;
   qrAmount?: string | null;
+  qrCurrency?: string | null;
+  qrTransactionReference?: string | null;
   paymentUrl?: string | null;
   payeeName?: string | null;
   claimedOrganization?: string | null;
@@ -30,6 +34,16 @@ type PaymentFraudDetection = {
 
 function display(value: unknown, fallback = "Unknown") {
   return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function safePaymentUrl(value: string | null | undefined) {
+  if (!value) return "Not extracted";
+  try {
+    const url = new URL(value);
+    return `${url.hostname}${url.pathname}`;
+  } catch {
+    return "Payment URL extracted; details hidden";
+  }
 }
 
 export default function PaymentFraudLayer({ result }: { result?: PaymentFraudDetection }) {
@@ -51,10 +65,13 @@ export default function PaymentFraudLayer({ result }: { result?: PaymentFraudDet
           <Metric label="Payment Destination" value={display(result.destinationType, "NONE").replaceAll("_", " ")} />
           <Metric label="Payment Context" value={display(result.paymentContext, "UNKNOWN").replaceAll("_", " ")} />
           <Metric label="Payment Reason" value={display(result.paymentReason, "Not identified")} />
-          <Metric label="Decoded UPI / VPA" value={result.upiIds?.length ? result.upiIds.join(", ") : "None extracted"} />
+          <Metric label="Decoded UPI / VPA" value={result.upiIds?.length ? result.upiIds.map(maskPaymentIdentifier).join(", ") : "None extracted"} />
           <Metric label="QR Payee Name" value={display(result.qrPayeeName, "Not in decoded payload")} />
           <Metric label="QR Amount" value={display(result.qrAmount, "Not in decoded payload")} />
           <Metric label="Payment URL" value={display(result.paymentUrl, "Not extracted")} />
+                    <Metric label="Payment URL" value={safePaymentUrl(result.paymentUrl)} />
+                    <Metric label="QR Currency" value={display(result.qrCurrency, "Not in decoded payload")} />
+                    <Metric label="Transaction Reference" value={display(result.qrTransactionReference, "Not in decoded payload")} />
           <Metric label="Claimed Organization" value={display(result.claimedOrganization, "Not identified")} />
           <Metric label="Payee / Organization" value={display(result.organizationMatch, "UNVERIFIED")} />
           <Metric label="Bank / IFSC" value={bank.length ? bank.join(" · ") : "None detected"} />
@@ -62,7 +79,7 @@ export default function PaymentFraudLayer({ result }: { result?: PaymentFraudDet
           <Metric label="Destination Verification" value={result.destinationVerification === "GOVERNMENT_DOMAIN_MATCH" ? "Government domain match; authorization unverified" : display(result.destinationVerification, "UNVERIFIED").replaceAll("_", " ")} />
           <Metric label="Verification Status" value={display(result.verificationStatus, "UNKNOWN").replaceAll("_", " ")} />
         </div>
-        {result.qrPayload && <p className="mt-3 break-all rounded-xl bg-slate-50 p-3 text-sm text-slate-600">QR payload: {result.qrPayload}</p>}
+        {result.qrPayload && <p className="mt-3 break-all rounded-xl bg-slate-50 p-3 text-sm text-slate-600">QR payment ID: {maskPaymentIdentifier(result.qrPayload)}</p>}
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <span className="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700">Risk Score: {Math.max(0, Math.min(100, result.riskScore || 0))}%</span>
           <span className={`rounded-full border px-4 py-2 text-sm font-black ${tone}`}>{display(result.verdict, "REVIEW").replaceAll("_", " ")}</span>

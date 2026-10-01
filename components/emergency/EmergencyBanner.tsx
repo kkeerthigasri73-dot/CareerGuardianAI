@@ -35,7 +35,7 @@ export default function EmergencyBanner({
 
             <span className="font-bold">
 
-              Guardian Recovery Hub
+              Raise a Complaint
 
             </span>
 
@@ -124,7 +124,7 @@ export default function EmergencyBanner({
 
   <ArrowRight className="h-6 w-6" />
 
-  Start Guardian Recovery
+  Raise a Complaint
 
 </button>
 

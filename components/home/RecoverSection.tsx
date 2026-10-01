@@ -48,7 +48,7 @@ export default function RecoverSection() {
 
           <span className="rounded-full bg-red-100 px-5 py-2 text-sm font-semibold text-red-700">
 
-            GUARDIAN RECOVER
+            RAISE A COMPLAINT
 
           </span>
 
@@ -60,9 +60,7 @@ export default function RecoverSection() {
 
           <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-600">
 
-            If a recruitment scam occurs, CareerGuardian AI immediately
-            guides victims through investigation, evidence collection,
-            complaint generation and recovery assistance.
+            Report fraud, preserve evidence & start recovery.
 
           </p>
 

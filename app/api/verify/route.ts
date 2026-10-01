@@ -12,6 +12,7 @@ import { analyzeThreatNet, threatNetConfig, type ThreatIntelligence } from "@/li
 import { analyzeLinks, linkSentinelConfig } from "@/lib/linkSentinel";
 import { aggregateScamRisk } from "@/lib/linkSentinel/risk";
 import { assessGovernmentRegistryCrossCheck, governmentRegistryConfig, mergeGovernmentRegistryEvidence } from "@/lib/governmentRegistry";
+import { buildProvenanceAssessment, type DocumentProvenance } from "@/lib/documentProvenance";
 
 export async function POST(req: Request) {
   try {
@@ -82,6 +83,23 @@ export async function POST(req: Request) {
         evidence.layers[11].message += " Critical financial or credential evidence elevated security risk independently of URL analysis.";
       }
     }
+    const submittedProvenance = body.documentProvenance && typeof body.documentProvenance === "object"
+      ? body.documentProvenance as DocumentProvenance
+      : null;
+    const documentProvenance = submittedProvenance
+      ? {
+          ...submittedProvenance,
+          assessment: buildProvenanceAssessment({
+            provenance: submittedProvenance,
+            claimedOrganization: governmentVerification.claimedOrganization || (typeof company === "string" ? company : ""),
+            claimedNotificationNumber: governmentVerification.notificationNumber || (typeof notificationNumber === "string" ? notificationNumber : ""),
+            governmentVerification,
+            paymentFraudDetection,
+            linkSentinel,
+            existingVerdict: evidence.verdict,
+          }),
+        }
+      : undefined;
     const threatText = [body.rawText, body.extractedText, body.text, body.transcript, body.cleanTranscript, body.description]
       .filter((value): value is string => typeof value === "string").join("\n").slice(0, 30000);
     let threatIntelligence: (ThreatIntelligence & { enabled: boolean }) | { enabled: false; matched: false; clusterId: null; similarityScore: 0; reportCount: 0; reportsLast24Hours: 0; reportsLast72Hours: 0; firstSeenAt: null; lastSeenAt: null; threatLevel: "NOT_ENABLED"; evidence: string[] } | null = threatNetConfig.enabled ? null : { enabled: false, matched: false, clusterId: null, similarityScore: 0, reportCount: 0, reportsLast24Hours: 0, reportsLast72Hours: 0, firstSeenAt: null, lastSeenAt: null, threatLevel: "NOT_ENABLED", evidence: [] };
@@ -160,6 +178,7 @@ export async function POST(req: Request) {
       threatIntelligence,
       linkSentinel,
       governmentVerification,
+      documentProvenance,
       payGuard: evidence.payGuard,
       positiveSignals: evidence.positiveSignals, negativeSignals: evidence.negativeSignals,
       missingSignals: evidence.missingSignals, independentConfirmation: evidence.independentConfirmation,
@@ -198,6 +217,7 @@ export async function POST(req: Request) {
       threatIntelligence,
       linkSentinel,
       governmentVerification,
+      documentProvenance,
       inputType: body.inputType || "unknown", inputMethod: body.inputMethod || "unknown",
       sourceLabel: evidence.sourceLabel, positiveSignals: evidence.positiveSignals,
       negativeSignals: evidence.negativeSignals, missingSignals: evidence.missingSignals,

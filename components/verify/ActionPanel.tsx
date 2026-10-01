@@ -152,7 +152,7 @@ export default function ActionPanel({
 
             <button className="mt-10 flex items-center gap-3 rounded-2xl bg-red-600 px-8 py-4 text-lg font-bold text-white transition hover:scale-105 hover:bg-red-700">
 
-              Launch Guardian Recovery
+              Raise a Complaint
 
               <ArrowRight className="h-5 w-5" />
 
