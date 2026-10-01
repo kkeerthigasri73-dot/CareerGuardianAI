@@ -127,6 +127,8 @@ export default function GuardianRecoveryCenter() {
   const [caseData, setCaseData] = useState<RecoveryCase | null>(null);
   const [verification, setVerification] = useState<Record<string, unknown> | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const voiceEnabledRef = useRef(true);
+  const voiceSessionRef = useRef(0);
   const [guidancePaused, setGuidancePaused] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -198,8 +200,23 @@ export default function GuardianRecoveryCenter() {
   const complaint = useMemo(() => complaintInput ? complaintText(complaintInput) : "", [complaintInput]);
 
   function speak(text: string) {
-    if (!voiceEnabled) return;
+    if (!voiceEnabledRef.current) return;
     speakText(text);
+  }
+
+  function toggleVoice() {
+    const enabled = !voiceEnabledRef.current;
+    voiceEnabledRef.current = enabled;
+    voiceSessionRef.current += 1;
+    setVoiceEnabled(enabled);
+    if (!enabled) {
+      window.speechSynthesis?.cancel();
+      setGuidancePaused(false);
+    }
+  }
+
+  function getVoicePlaybackState() {
+    return { enabled: voiceEnabledRef.current, session: voiceSessionRef.current };
   }
 
   function completeStep(step: number) {
@@ -464,7 +481,7 @@ export default function GuardianRecoveryCenter() {
                 <p className="mt-2 text-slate-600">These details help us prepare the correct recovery workflow.</p>
               </div>
               <div className="flex items-center gap-2 self-start rounded-lg border px-3 py-2 text-sm">
-                <button type="button" onClick={() => setVoiceEnabled(!voiceEnabled)} aria-label={voiceEnabled ? "Turn voice guidance off" : "Turn voice guidance on"} className="rounded p-1 focus:outline-none focus:ring-2 focus:ring-blue-500">{voiceEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}</button>
+                <button type="button" onClick={toggleVoice} aria-label={voiceEnabled ? "Turn voice guidance off" : "Turn voice guidance on"} className="rounded p-1 focus:outline-none focus:ring-2 focus:ring-blue-500">{voiceEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}</button>
                 Voice Guidance {voiceEnabled ? "On" : "Off"}
               </div>
             </div>
@@ -515,7 +532,7 @@ export default function GuardianRecoveryCenter() {
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => { setGuidancePaused(false); speak("Your recovery plan is ready. Secure the transaction and contact your financial institution. Preserve payment and communication evidence. Generate your formal complaint. Report the incident to the appropriate cyber crime authority. Share the recovery report with trusted contacts if needed."); }} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-slate-50"><Headphones className="h-4 w-4" />Play Recovery Guidance</button>
                   <button type="button" disabled={!voiceEnabled} onClick={() => { if (guidancePaused) window.speechSynthesis?.resume(); else window.speechSynthesis?.pause(); setGuidancePaused(!guidancePaused); }} className="rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-50">{guidancePaused ? "Resume" : "Pause"}</button>
-                  <button type="button" onClick={() => { setVoiceEnabled(!voiceEnabled); if (voiceEnabled) { window.speechSynthesis?.cancel(); setGuidancePaused(false); } }} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold">{voiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}Voice {voiceEnabled ? "On" : "Off"}</button>
+                  <button type="button" onClick={toggleVoice} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold">{voiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}Voice {voiceEnabled ? "On" : "Off"}</button>
                 </div>
               </div>
               <ol className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{currentSteps.map((step, index) => { const done = completedSteps.includes(index + 1); const current = !done && index === firstIncompleteStep; return <li key={step} className={`flex items-start gap-2 rounded-lg border p-4 ${current ? "border-red-300 bg-red-50" : done ? "border-green-200 bg-green-50" : "border-slate-200"}`}><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${done ? "bg-green-700 text-white" : current ? "bg-red-700 text-white" : "bg-slate-100 text-slate-700"}`}>{done ? <Check className="h-4 w-4" /> : index + 1}</span><span className="flex-1 text-sm font-medium">{step}</span><button type="button" onClick={() => speak(`Step ${index + 1}: ${step}. Follow the action that applies to the incident you described.`)} aria-label={`Listen to step ${index + 1}: ${step}`} title="Listen to this step" className="rounded p-1 text-slate-600 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"><Headphones className="h-4 w-4" /></button></li>; })}</ol>
@@ -594,6 +611,7 @@ export default function GuardianRecoveryCenter() {
                 verdict: typeof verification?.verdict === "string" ? verification.verdict : undefined,
               }}
               voiceEnabled={voiceEnabled}
+              getVoicePlaybackState={getVoicePlaybackState}
               onAction={(action) => {
                 if (action === "call_1930") window.location.href = "tel:1930";
                 if (action === "notify_bank") { setShowBank(true); document.getElementById("recovery-actions")?.scrollIntoView({ behavior: "smooth" }); }

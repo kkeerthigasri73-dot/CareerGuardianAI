@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bot, Send, User, Sparkles, ShieldCheck, RotateCw } from "lucide-react";
 import { useLanguage } from "@/src/context/LanguageContext";
 import { speakText } from "@/src/lib/speech";
@@ -18,19 +18,29 @@ type ChatMessage = { role: "user" | "assistant"; content: string; actions?: Acti
 type Props = {
   recoveryCase: RecoveryCaseContext;
   voiceEnabled: boolean;
+  getVoicePlaybackState: () => { enabled: boolean; session: number };
   onAction: (action: string) => void;
 };
 
 const historyKey = (caseId: string) => `recovery-chat-${caseId}`;
 const welcome = (c: RecoveryCaseContext) => `Hello. I'm your CareerGuardian Recovery Assistant. I can guide you through this recovery case step by step.\n\nYour current case involves ${c.organization || "an organization not specified in this case"} and is currently ${c.status.replaceAll("_", " ")}.\n\nYou can ask me about securing a transaction, notifying your financial institution, preserving evidence, generating a complaint, reporting the incident, or tracking the case.`;
 
-export default function RecoveryAssistant({ recoveryCase, voiceEnabled, onAction }: Props) {
+export default function RecoveryAssistant({ recoveryCase, voiceEnabled, getVoicePlaybackState, onAction }: Props) {
   const { language } = useLanguage();
   const [conversation, setConversation] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [retryMessage, setRetryMessage] = useState("");
+  const mountedRef = useRef(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -53,6 +63,7 @@ export default function RecoveryAssistant({ recoveryCase, voiceEnabled, onAction
   async function submit(text = message) {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
+    const voiceSession = getVoicePlaybackState().session;
     const isRetry = trimmed === retryMessage && Boolean(error);
     const history = isRetry ? conversation : [...conversation, { role: "user" as const, content: trimmed }];
     if (!isRetry) {
@@ -75,7 +86,8 @@ export default function RecoveryAssistant({ recoveryCase, voiceEnabled, onAction
       setMessage("");
       const answer: ChatMessage = { role: "assistant", content: result.reply, actions: Array.isArray(result.actions) ? result.actions : [] };
       setConversation((current) => [...current, answer]);
-      if (voiceEnabled) speakText(answer.content, language);
+      const playbackState = getVoicePlaybackState();
+      if (mountedRef.current && voiceEnabled && playbackState.enabled && playbackState.session === voiceSession) speakText(answer.content, language);
     } catch (failure) {
       const status = (failure as Error & { status?: number }).status;
       setMessage(trimmed);

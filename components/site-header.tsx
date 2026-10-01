@@ -7,12 +7,9 @@ import {
   Menu,
   X,
   ShieldCheck,
-  Siren,
   LayoutDashboard,
   ChevronDown,
-  FileCheck2,
   Radar,
-  TriangleAlert,
   FileText,
   GraduationCap,
   Mic2,
@@ -29,24 +26,6 @@ import NotificationBell from "@/components/NotificationBell";
 /* =========================================================
    NAVIGATION DATA
 ========================================================= */
-
-const verifyItems: NavItem[] = [
-  {
-    label: "recruitmentVerification",
-    href: "/analyze",
-    icon: ShieldCheck,
-  },
-  {
-    label: "aiTrustEngine",
-    href: "/verify",
-    icon: FileCheck2,
-  },
-  {
-    label: "verificationDashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-];
 
 const growItems: NavItem[] = [
   {
@@ -78,24 +57,6 @@ const growItems: NavItem[] = [
     label: "opportunityRadar",
     href: "/opportunities",
     icon: Radar,
-  },
-];
-
-const recoverItems: NavItem[] = [
-  {
-    label: "emergencyRecovery",
-    href: "/emergency",
-    icon: Siren,
-  },
-  {
-    label: "reportScam",
-    href: "/emergency#report-scam",
-    icon: TriangleAlert,
-  },
-  {
-    label: "recoveryGuidance",
-    href: "/emergency",
-    icon: ShieldCheck,
   },
 ];
 
@@ -191,13 +152,13 @@ export function SiteHeader() {
             DESKTOP NAVIGATION
         ================================================= */}
 
-        <nav className="hidden h-full min-w-0 flex-1 items-center justify-center gap-1 lg:flex">
+        <nav className="hidden h-full min-w-0 flex-1 items-center justify-center gap-2 xl:gap-4 lg:flex">
           {/* HOME */}
 
           <Link
             href="/"
             onClick={closeNavigation}
-            className={`inline-flex h-10 items-center justify-center rounded-lg px-3 text-sm font-bold leading-none transition ${
+            className={`inline-flex h-10 items-center justify-center rounded-lg px-2 text-sm font-bold leading-none transition xl:px-3 ${
               isActive("/")
                 ? "bg-indigo-50 text-indigo-700"
                 : "text-slate-700 hover:bg-slate-100 hover:text-cyan-700"
@@ -210,17 +171,17 @@ export function SiteHeader() {
               VERIFY
           ================================================= */}
 
-          <DesktopDropdown
-            title={t("verify")}
-            items={verifyItems}
-            pathname={pathname}
-            open={openDropdown === "verify"}
-            onToggle={() => toggleDropdown("verify")}
-            onNavigate={closeNavigation}
-            isActive={verifyItems.some((item) =>
-              isActive(item.href)
-            )}
-          />
+          <Link
+            href="/verify"
+            onClick={closeNavigation}
+            className={`inline-flex h-10 items-center justify-center rounded-lg px-2 text-sm font-bold leading-none transition xl:px-3 ${
+              isActive("/verify") || isActive("/analyze")
+                ? "bg-indigo-50 text-indigo-700"
+                : "text-slate-700 hover:bg-slate-100 hover:text-cyan-700"
+            }`}
+          >
+            {t("verify")}
+          </Link>
 
           {/* =================================================
               GROW
@@ -242,17 +203,17 @@ export function SiteHeader() {
               RECOVER
           ================================================= */}
 
-          <DesktopDropdown
-            title={t("recover")}
-            items={recoverItems}
-            pathname={pathname}
-            open={openDropdown === "recover"}
-            onToggle={() => toggleDropdown("recover")}
-            onNavigate={closeNavigation}
-            isActive={recoverItems.some((item) =>
-              isActive(item.href)
-            )}
-          />
+          <Link
+            href="/emergency"
+            onClick={closeNavigation}
+            className={`inline-flex h-10 items-center justify-center rounded-lg px-2 text-sm font-bold leading-none transition xl:px-3 ${
+              isActive("/emergency")
+                ? "bg-indigo-50 text-indigo-700"
+                : "text-slate-700 hover:bg-slate-100 hover:text-cyan-700"
+            }`}
+          >
+            {t("recover")}
+          </Link>
 
           {/* =================================================
               DASHBOARD
@@ -261,7 +222,7 @@ export function SiteHeader() {
           <Link
             href="/dashboard"
             onClick={closeNavigation}
-            className={`flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-bold leading-none transition ${
+            className={`flex h-10 items-center justify-center gap-2 rounded-lg px-2 text-sm font-bold leading-none transition xl:px-3 ${
               isActive("/dashboard")
                 ? "bg-indigo-50 text-indigo-700"
                 : "text-slate-700 hover:bg-slate-100 hover:text-cyan-700"
@@ -329,19 +290,17 @@ export function SiteHeader() {
 
             {/* VERIFY */}
 
-            <MobileSection
-              title={t("verify")}
-              section="verify"
-              items={verifyItems}
-              open={openMobileSection === "verify"}
-              onToggle={() =>
-                setOpenMobileSection((current) =>
-                  current === "verify" ? null : "verify"
-                )
-              }
-              onNavigate={closeNavigation}
-              isItemActive={isActive}
-            />
+            <Link
+              href="/verify"
+              onClick={closeNavigation}
+              className={`block rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                isActive("/verify") || isActive("/analyze")
+                  ? "bg-indigo-50 text-indigo-700"
+                  : "text-slate-700 hover:bg-slate-100 hover:text-blue-600"
+              }`}
+            >
+              {t("verify")}
+            </Link>
 
             {/* GROW */}
 
@@ -361,19 +320,17 @@ export function SiteHeader() {
 
             {/* RECOVER */}
 
-            <MobileSection
-              title={t("recover")}
-              section="recover"
-              items={recoverItems}
-              open={openMobileSection === "recover"}
-              onToggle={() =>
-                setOpenMobileSection((current) =>
-                  current === "recover" ? null : "recover"
-                )
-              }
-              onNavigate={closeNavigation}
-              isItemActive={isActive}
-            />
+            <Link
+              href="/emergency"
+              onClick={closeNavigation}
+              className={`block rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                isActive("/emergency")
+                  ? "bg-indigo-50 text-indigo-700"
+                  : "text-slate-700 hover:bg-slate-100 hover:text-blue-600"
+              }`}
+            >
+              {t("recover")}
+            </Link>
 
             {/* DASHBOARD */}
 
@@ -458,7 +415,7 @@ function DesktopDropdown({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={onToggle}
-        className={`flex h-10 items-center justify-center gap-1 rounded-lg px-3 text-sm font-bold leading-none transition ${
+        className={`flex h-10 items-center justify-center gap-1 rounded-lg px-2 text-sm font-bold leading-none transition xl:px-3 ${
           active
             ? "bg-indigo-50 text-indigo-700"
             : "text-slate-700 hover:bg-slate-100 hover:text-cyan-700"

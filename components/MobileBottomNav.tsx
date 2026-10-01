@@ -8,7 +8,7 @@ import type { TranslationKey } from "@/src/lib/translations";
 
 const items: { href: string; label: TranslationKey; icon: LucideIcon }[] = [
   { href: "/", label: "home", icon: Home },
-  { href: "/analyze", label: "verify", icon: ShieldCheck },
+  { href: "/verify", label: "verify", icon: ShieldCheck },
   { href: "/career-dna", label: "grow", icon: BrainCircuit },
   { href: "/dashboard", label: "dashboard", icon: Bell },
   { href: "/profile", label: "myProfile", icon: UserRound },
