@@ -10,6 +10,8 @@ import groq from "@/lib/groq";
 import { analyzePayGuard, toPaymentFraudDetection } from "@/lib/payguard";
 import { analyzeThreatNet, threatNetConfig, type ThreatIntelligence } from "@/lib/threatnet";
 import { analyzeLinks, linkSentinelConfig } from "@/lib/linkSentinel";
+import { aggregateScamRisk } from "@/lib/linkSentinel/risk";
+import { assessGovernmentRegistryCrossCheck, governmentRegistryConfig, mergeGovernmentRegistryEvidence } from "@/lib/governmentRegistry";
 
 export async function POST(req: Request) {
   try {
@@ -20,6 +22,22 @@ export async function POST(req: Request) {
     const payGuardSource = { ...body, rawText: [body.rawText, body.extractedText, body.text, body.transcript].filter((value): value is string => typeof value === "string").join("\n"), sourceUrl: body.inputType === "url" ? body.website || body.url : undefined };
     const payGuard = analyzePayGuard(payGuardSource);
     const evidence = fuseRecruitmentEvidence(body, domain, emailResult, payGuard);
+    const governmentVerification = governmentRegistryConfig.enabled ? assessGovernmentRegistryCrossCheck(body) : ({
+      isGovernmentJobClaim: false,
+      claimedOrganization: typeof company === "string" ? company : "",
+      notificationNumber: typeof notificationNumber === "string" ? notificationNumber : "",
+      domainValidation: { urlChecked: typeof website === "string" ? website : "", officialTld: false, status: "NOT_APPLICABLE" as const, reason: "Government registry cross-check is disabled by configuration." },
+      registryChecks: [],
+      notificationMatch: { status: "NOT_APPLICABLE" as const, matchedFields: [] },
+      recruitmentConsistency: { status: "NOT_APPLICABLE" as const, issues: [] },
+      paymentSafety: { status: "NOT_APPLICABLE" as const, issues: [] },
+      evidenceQuality: "UNAVAILABLE" as const,
+      verificationStatus: "UNAVAILABLE" as const,
+      redFlags: [],
+      positiveSignals: [],
+      recommendation: "Government registry cross-check is disabled by configuration.",
+    });
+    mergeGovernmentRegistryEvidence(evidence, governmentVerification);
     const paymentFraudDetection = toPaymentFraudDetection(payGuard);
     const linkContext = [body.rawText, body.extractedText, body.text, body.transcript, body.cleanTranscript, body.description].filter((value): value is string => typeof value === "string").join("\n").slice(0, 30000);
     let linkSentinel = { enabled: linkSentinelConfig.enabled, status: linkSentinelConfig.enabled ? "UNAVAILABLE" : "DISABLED", urlsAnalyzed: [] as Awaited<ReturnType<typeof analyzeLinks>> };
@@ -27,24 +45,41 @@ export async function POST(req: Request) {
       try {
         linkSentinel.urlsAnalyzed = await analyzeLinks(linkContext, typeof company === "string" ? company : "", typeof website === "string" ? website : typeof body.url === "string" ? body.url : "");
         linkSentinel.status = "AVAILABLE";
-        const domainSignals = linkSentinel.urlsAnalyzed.filter((link) => link.domainAnalysis.domainRiskContribution > 0);
-        if (domainSignals.length) {
-          const paymentCorrelation = payGuard.paymentRequest || payGuard.riskContribution > 0;
-          const baseContribution = domainSignals.reduce((total, link) => total + link.domainAnalysis.domainRiskContribution, 0);
-          const contribution = Math.min(20, Math.round(baseContribution * (paymentCorrelation ? 1.25 : 1)));
-          evidence.riskScore = Math.min(100, evidence.riskScore + contribution);
-          evidence.trustScore = Math.round((100 - evidence.riskScore) * evidence.verificationConfidence / 100);
-          if (evidence.riskScore >= 60) evidence.verdict = "HIGH RISK";
-          else if (evidence.verdict === "LOW RISK" && contribution >= 8) evidence.verdict = "REVIEW";
-          evidence.layers[11].state = evidence.verdict === "HIGH RISK" ? "HIGH_RISK" : evidence.verdict === "LOW RISK" ? "PASS" : "REVIEW";
-          evidence.layers[11].passed = evidence.verdict === "LOW RISK";
-          evidence.layers[11].score = evidence.trustScore;
-          evidence.layers[11].message += ` Link Sentinel added ${contribution} supporting risk point(s) from ${domainSignals.length} unverified or lookalike URL(s)${paymentCorrelation ? " correlated with PayGuard payment evidence" : ""}.`;
-          evidence.evidence.push({ id: "link-sentinel", category: "url-security", state: contribution >= 15 ? "HIGH_RISK" : "REVIEW", weight: contribution, explanation: `${domainSignals.length} recruitment URL(s) did not exactly match a verified official domain; see Link Sentinel comparisons for the specific difference.`, source: "Link Sentinel" });
-          evidence.negativeSignals.push("A submitted recruitment URL does not match its claimed organization's verified official domain.");
-        }
       } catch (error) {
         console.error("[LinkSentinel] Integration unavailable:", error instanceof Error ? error.message : "Unknown error");
+      }
+    }
+    const hasCredentialEvidence = evidence.evidence.some((item) => item.id === "credentials" && item.state === "HIGH_RISK" && item.weight > 0);
+    const personalPayment = payGuard.paymentRequest && (payGuard.upiIds.length > 0 || payGuard.bankAccounts.length > 0);
+    const suspiciousQrPayment = payGuard.paymentRequest && payGuard.qr.detected && !payGuard.paymentChannel.officialEvidence;
+    const maliciousRedirect = linkSentinel.urlsAnalyzed.some((link) => link.phishingSignals.some((signal) => /MALICIOUS|PHISHING/i.test(signal)));
+    const previousRisk = evidence.riskScore;
+    evidence.riskScore = aggregateScamRisk(previousRisk, linkSentinel.urlsAnalyzed, {
+      criticalFinancialOrCredential: payGuard.severity === "CRITICAL" || hasCredentialEvidence,
+      personalPayment,
+      suspiciousQrPayment,
+      maliciousRedirect,
+    });
+    const contribution = evidence.riskScore - previousRisk;
+    if (linkSentinel.urlsAnalyzed.length || contribution > 0) {
+      evidence.trustScore = Math.round((100 - evidence.riskScore) * evidence.verificationConfidence / 100);
+      if (evidence.riskScore >= 60) evidence.verdict = "HIGH RISK";
+      else if (evidence.verdict === "LOW RISK" && contribution >= 8) evidence.verdict = "REVIEW";
+      evidence.layers[11].state = evidence.verdict === "HIGH RISK" ? "HIGH_RISK" : evidence.verdict === "LOW RISK" ? "PASS" : "REVIEW";
+      evidence.layers[11].passed = evidence.verdict === "LOW RISK";
+      evidence.layers[11].score = evidence.trustScore;
+      if (linkSentinel.urlsAnalyzed.length) {
+          const lookalikeImpersonation = linkSentinel.urlsAnalyzed.some((link) => link.domainAnalysis.organizationDomainStatus === "MISMATCH" && link.domainAnalysis.isTyposquatting && link.domainAnalysis.similarityScore >= 85);
+          const explanation = lookalikeImpersonation
+            ? "High risk because the submitted domain does not exactly match the verified official domain and closely imitates it through domain manipulation."
+            : `${linkSentinel.urlsAnalyzed.length} recruitment URL(s) were weighted by domain verification, manipulation, redirects, and payment-risk evidence.`;
+          evidence.layers[11].message += ` Link Sentinel evidence-weighted risk adjustment: ${contribution >= 0 ? "+" : ""}${contribution} point(s). ${explanation}`;
+          if (contribution > 0 || lookalikeImpersonation) {
+            evidence.evidence.push({ id: "link-sentinel", category: "url-security", state: evidence.riskScore >= 70 ? "HIGH_RISK" : "REVIEW", weight: Math.max(0, contribution), explanation, source: "Link Sentinel" });
+          }
+          if (lookalikeImpersonation) evidence.negativeSignals.push("The submitted domain closely imitates the verified official domain through domain manipulation.");
+      } else {
+        evidence.layers[11].message += " Critical financial or credential evidence elevated security risk independently of URL analysis.";
       }
     }
     const threatText = [body.rawText, body.extractedText, body.text, body.transcript, body.cleanTranscript, body.description]
@@ -124,6 +159,7 @@ export async function POST(req: Request) {
       paymentFraudDetection,
       threatIntelligence,
       linkSentinel,
+      governmentVerification,
       payGuard: evidence.payGuard,
       positiveSignals: evidence.positiveSignals, negativeSignals: evidence.negativeSignals,
       missingSignals: evidence.missingSignals, independentConfirmation: evidence.independentConfirmation,
@@ -161,6 +197,7 @@ export async function POST(req: Request) {
       paymentFraudDetection,
       threatIntelligence,
       linkSentinel,
+      governmentVerification,
       inputType: body.inputType || "unknown", inputMethod: body.inputMethod || "unknown",
       sourceLabel: evidence.sourceLabel, positiveSignals: evidence.positiveSignals,
       negativeSignals: evidence.negativeSignals, missingSignals: evidence.missingSignals,

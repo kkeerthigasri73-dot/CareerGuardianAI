@@ -13,6 +13,7 @@ import ExtractedInfo from "@/components/analyze/ExtractedInfo";
 import TrustEngine from "@/components/analyze/TrustEngine";
 import RecordingEvidencePanel from "@/components/analyze/RecordingEvidencePanel";
 import PaymentFraudLayer from "@/components/analyze/PaymentFraudLayer";
+import GovernmentRegistryPanel from "@/components/analyze/GovernmentRegistryPanel";
 
 async function decodeUploadedQrCodes(file: File): Promise<{ payloads: string[]; status: "DECODED" | "NOT_DETECTED" | "UNAVAILABLE" }> {
   const Detector = (window as Window & { BarcodeDetector?: new (options?: { formats?: string[] }) => { detect: (source: ImageBitmap | HTMLCanvasElement) => Promise<Array<{ rawValue?: string; format?: string }>> } }).BarcodeDetector;
@@ -448,6 +449,8 @@ export default function VerifyPage() {
               </div>
 
               <PaymentFraudLayer result={verification.paymentFraudDetection} />
+
+              <GovernmentRegistryPanel result={verification.governmentVerification} />
 
               <div className="mt-10">
                 <TrustEngine

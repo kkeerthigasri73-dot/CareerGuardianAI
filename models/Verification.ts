@@ -66,6 +66,7 @@ const VerificationSchema = new Schema(
     aiExplanation: String,
     // Optional second-stage comparison; absent on historical records.
     guardianTrustCheck: { type: Schema.Types.Mixed, default: undefined },
+    governmentVerification: { type: Schema.Types.Mixed, default: undefined },
     mediaType: String,
     mediaMetadata: Schema.Types.Mixed,
     recordingDuration: Number,
