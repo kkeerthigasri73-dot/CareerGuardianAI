@@ -12,6 +12,41 @@ import AIThinking from "@/components/verify/AIThinking";
 import ExtractedInfo from "@/components/analyze/ExtractedInfo";
 import TrustEngine from "@/components/analyze/TrustEngine";
 import RecordingEvidencePanel from "@/components/analyze/RecordingEvidencePanel";
+import PaymentFraudLayer from "@/components/analyze/PaymentFraudLayer";
+
+async function decodeUploadedQrCodes(file: File): Promise<{ payloads: string[]; status: "DECODED" | "NOT_DETECTED" | "UNAVAILABLE" }> {
+  const Detector = (window as Window & { BarcodeDetector?: new (options?: { formats?: string[] }) => { detect: (source: ImageBitmap | HTMLCanvasElement) => Promise<Array<{ rawValue?: string; format?: string }>> } }).BarcodeDetector;
+  if (!file.type.startsWith("image/") && file.type !== "application/pdf") return { payloads: [], status: "UNAVAILABLE" };
+  if (!Detector) return { payloads: [], status: "UNAVAILABLE" };
+  let detector: { detect: (source: ImageBitmap | HTMLCanvasElement) => Promise<Array<{ rawValue?: string; format?: string }>> };
+  try { detector = new Detector({ formats: ["qr_code"] }); }
+  catch { return { payloads: [], status: "UNAVAILABLE" }; }
+  const payloads = new Set<string>();
+  try {
+    if (file.type.startsWith("image/")) {
+      const bitmap = await createImageBitmap(file);
+      try { for (const item of await detector.detect(bitmap)) if (item.rawValue) payloads.add(item.rawValue.slice(0, 2000)); }
+      finally { bitmap.close(); }
+    } else {
+      const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+      const pdfDocument = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+      for (let pageNumber = 1; pageNumber <= Math.min(pdfDocument.numPages, 12); pageNumber += 1) {
+        const page = await pdfDocument.getPage(pageNumber);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = globalThis.document.createElement("canvas");
+        canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
+        const context = canvas.getContext("2d");
+        if (!context) continue;
+        await page.render({ canvasContext: context, viewport, canvas }).promise;
+        for (const item of await detector.detect(canvas)) if (item.rawValue) payloads.add(item.rawValue.slice(0, 2000));
+      }
+    }
+  } catch {
+    return { payloads: [], status: "UNAVAILABLE" };
+  }
+  const values = [...payloads].slice(0, 10);
+  return { payloads: values, status: values.length ? "DECODED" : "NOT_DETECTED" };
+}
 
 async function prepareRecordingAudio(file: File): Promise<{ audioFile: File; mediaType: "audio" | "video"; duration: number }> {
   const isVideo = /\.(mp4|mov|mkv)$/i.test(file.name) || file.type.startsWith("video/");
@@ -131,6 +166,8 @@ export default function VerifyPage() {
       }
       let recordingResult: any = null;
       let recordingText = "";
+      let decodedQrPayloads: string[] = [];
+      let qrScanStatus: "DECODED" | "NOT_DETECTED" | "UNAVAILABLE" = "UNAVAILABLE";
       if (selected === "recording" && file) {
         if (file.size > 25 * 1024 * 1024) throw new Error("Recording is too large to process. Choose a supported recording under 25 MB.");
         setRecordingProgress(t("verify.recording.processing", "Extracting audio from the recording…"));
@@ -150,6 +187,11 @@ export default function VerifyPage() {
         setRecording(recordingResult);
       }
       const inputMethodValue = selected === "recording" ? recordingResult.mediaType : selected === "url" ? "url" : textMode ? "text" : "ocr";
+      if (file && selected !== "recording") {
+        const qrScan = await decodeUploadedQrCodes(file);
+        decodedQrPayloads = qrScan.payloads;
+        qrScanStatus = qrScan.status;
+      }
       const extractPayload: Record<string, unknown> = { inputType, inputMethod: inputMethodValue };
       if (selected === "url") extractPayload.url = jobUrl;
       else if (selected === "recording") { extractPayload.text = recordingText; extractPayload.inputMethod = "text"; }
@@ -181,6 +223,9 @@ export default function VerifyPage() {
 
       const extractedData = {
         ...extract.data,
+        rawText: extract.text || "",
+        decodedQrPayloads,
+        qrScanStatus,
         website: extract.data.website || (selected === "url" ? jobUrl : ""),
         description: selected === "recording" ? recordingResult.rawTranscript : inputMethodValue !== "ocr" ? extract.text : extract.data.description || "",
         inputType,
@@ -401,6 +446,8 @@ export default function VerifyPage() {
                   }}
                 />
               </div>
+
+              <PaymentFraudLayer result={verification.paymentFraudDetection} />
 
               <div className="mt-10">
                 <TrustEngine

@@ -339,6 +339,60 @@ export default function TrustEngine({
             </div>
 
           </div>
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-slate-800">
+            <h3 className="font-bold">ThreatNet · Threat Intelligence</h3>
+            {!verification?.threatIntelligence?.enabled ? (
+              <p className="mt-2 text-sm">Not enabled</p>
+            ) : verification.threatIntelligence.matched ? (
+              <>
+                <p className="mt-2">Similar recruitment content has been reported {verification.threatIntelligence.reportCount} {verification.threatIntelligence.reportCount === 1 ? "time" : "times"}.</p>
+                <p className="mt-1 text-sm">{verification.threatIntelligence.threatLevel.replaceAll("_", " ")} · Similarity {verification.threatIntelligence.similarityScore}% · {verification.threatIntelligence.reportsLast24Hours} in the last 24 hours</p>
+                <p className="mt-2 text-xs text-slate-600">Community reports are supporting evidence only and do not determine the verification result.</p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm">Enabled · No similar recruitment reports found.</p>
+            )}
+          </div>
+          <div className="mt-5 rounded-2xl border border-cyan-200 bg-cyan-50 p-5 text-slate-800">
+            <h3 className="font-bold">Link Sentinel</h3>
+            {verification?.linkSentinel?.status === "DISABLED" ? (
+              <p className="mt-2 text-sm">Not enabled</p>
+            ) : verification?.linkSentinel?.status === "UNAVAILABLE" || !verification?.linkSentinel ? (
+              <p className="mt-2 text-sm">Link analysis unavailable for this verification.</p>
+            ) : verification.linkSentinel.urlsAnalyzed.length ? (
+              <>
+                <p className="mt-2 text-sm">{verification.linkSentinel.urlsAnalyzed.length} link(s) analyzed · {verification.linkSentinel.urlsAnalyzed.filter((link: any) => link.domainAnalysis.domainMatch).length} official match(es) · {verification.linkSentinel.urlsAnalyzed.filter((link: any) => link.domainAnalysis.isLookalike).length} lookalike(s)</p>
+                <div className="mt-3 space-y-2">
+                  {verification.linkSentinel.urlsAnalyzed.map((link: any, index: number) => (
+                    <details key={`${link.normalizedUrl}-${index}`} className="rounded-xl bg-white/80 p-3 text-sm">
+                      <summary className="cursor-pointer font-semibold">{link.domainAnalysis.domainStatus.replaceAll("_", " ")} · {link.domainAnalysis.hostname || "Invalid URL"}</summary>
+                      <div className="mt-3 space-y-2 break-words">
+                        <p><span className="font-semibold">Claimed organization:</span> {link.domainAnalysis.claimedOrganization}</p>
+                        <p><span className="font-semibold">Official website:</span> {link.domainAnalysis.officialWebsite || "Could not independently verify"}</p>
+                        <p><span className="font-semibold">Submitted website:</span> {link.originalUrl}</p>
+                        {link.resolvedUrl && link.resolvedUrl !== link.normalizedUrl && <p><span className="font-semibold">Resolved website:</span> {link.resolvedUrl}</p>}
+                        <p><span className="font-semibold">Domain match:</span> {link.domainAnalysis.domainMatch ? "Yes" : "No"} · <span className="font-semibold">Similarity:</span> {link.domainAnalysis.similarityScore}%</p>
+                        {link.domainAnalysis.differences?.map((difference: any, differenceIndex: number) => (
+                          <div key={differenceIndex} className="rounded-lg border border-amber-100 bg-amber-50 p-2">
+                            <p><span className="font-semibold">Official:</span> {difference.official}</p>
+                            <p><span className="font-semibold">Submitted:</span> {difference.submitted}</p>
+                            <p><span className="font-semibold">Difference:</span> {difference.explanation}</p>
+                          </div>
+                        ))}
+                        {link.domainAnalysis.differenceType?.length > 0 && <p><span className="font-semibold">Detected difference types:</span> {link.domainAnalysis.differenceType.map((type: string) => type.replaceAll("_", " ")).join(", ")}</p>}
+                        {link.redirectChain?.length > 1 && <p><span className="font-semibold">Redirect chain:</span> {link.redirectChain.join(" → ")}</p>}
+                        <p><span className="font-semibold">Domain risk contribution:</span> {link.domainAnalysis.domainRiskContribution}</p>
+                        {link.evidence?.length > 0 && <p className="text-xs text-slate-600">{link.evidence.join(" ")}</p>}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-slate-600">HTTPS, short links, and domain patterns are supporting signals; they do not establish legitimacy or fraud by themselves.</p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm">Enabled · No URLs found in the submitted recruitment content.</p>
+            )}
+          </div>
 <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
               ["Scam Risk", verification?.riskScore],

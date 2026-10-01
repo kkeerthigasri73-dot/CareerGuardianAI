@@ -83,7 +83,7 @@ const verifyResponse = await fetch("/api/verify", {
   headers: {
     "Content-Type": "application/json",
   },
-  body: JSON.stringify(extracted),
+  body: JSON.stringify({ ...extracted, rawText: [extract.text, message].filter(Boolean).join("\n"), website: website || extracted.website || "", inputMethod: extract.inputMethod, inputType: extract.inputMethod }),
 });
 
 const verification = await verifyResponse.json();

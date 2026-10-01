@@ -45,6 +45,22 @@ type ReportData = {
     negativeSignals?: string[];
     missingSignals?: string[];
     recommendedAction?: string;
+    paymentFraudDetection?: {
+      paymentRequested?: boolean;
+      amount?: string | null;
+      paymentReason?: string | null;
+      upiIds?: string[];
+      bankAccounts?: string[];
+      ifscCodes?: string[];
+      qrCodeMentioned?: boolean;
+      qrPayload?: string | null;
+      paymentContext?: string;
+      destinationType?: string;
+      riskScore?: number;
+      verdict?: string;
+      redFlags?: string[];
+      recommendation?: string;
+    };
     sourceType?: string;
     independentConfirmation?: { status?: string; channel?: string };
     inputType?: string;
@@ -121,7 +137,7 @@ function pageTitle(doc: jsPDF, eyebrow: string, title: string, page: number) {
   setFill(doc, COLORS.navy); doc.rect(0, 0, PAGE_WIDTH, 27, "F");
   doc.setFont("helvetica", "bold"); doc.setFontSize(9); setText(doc, COLORS.cyan); doc.text("CAREERGUARDIAN AI", MARGIN, 10);
   doc.setFontSize(7); setText(doc, [186, 204, 229]); doc.text(eyebrow.toUpperCase(), MARGIN, 17);
-  doc.setFontSize(8); doc.text(`${String(page).padStart(2, "0")} / 05`, PAGE_WIDTH - MARGIN, 14, { align: "right" });
+  doc.setFontSize(8); doc.text(`${String(page).padStart(2, "0")} / 06`, PAGE_WIDTH - MARGIN, 14, { align: "right" });
   doc.setFontSize(20); setText(doc, COLORS.navy); doc.text(title, MARGIN, 43);
 }
 function footer(doc: jsPDF, data: ReportData, page: number, generatedAt: string) {
@@ -131,7 +147,7 @@ function footer(doc: jsPDF, data: ReportData, page: number, generatedAt: string)
   doc.text(`ID: ${clean(data.verification?.id || data.verification?._id)}`, PAGE_WIDTH / 2, y, { align: "center" });
   doc.text(`Generated: ${generatedAt}`, PAGE_WIDTH - MARGIN, y, { align: "right" });
   doc.setFontSize(6.5); doc.text("AI-Assisted Recruitment Investigation  â€¢  12-Layer Verification  â€¢  Evidence-Based Analysis", PAGE_WIDTH / 2, y + 8, { align: "center" });
-  doc.setFontSize(7); doc.text(`Page ${page} of 5`, PAGE_WIDTH - MARGIN, y + 8, { align: "right" });
+  doc.setFontSize(7); doc.text(`Page ${page} of 6`, PAGE_WIDTH - MARGIN, y + 8, { align: "right" });
 }
 function getLayers(data: ReportData) {
   return [...(data.verification?.layers || [])].sort((a, b) => Number(a.layer || 0) - Number(b.layer || 0)).slice(0, 12);
@@ -191,6 +207,7 @@ export function generateReport(input: ReportData) {
   const missingLayers = layers.filter((layer) => layerStatus(layer) === "REVIEW");
   const passedCount = positiveLayers.length;
   const reviewCount = layers.filter((layer) => layerStatus(layer) === "REVIEW").length;
+  const payment = data.verification?.paymentFraudDetection;
 
   // Page 1: summary
   pageTitle(doc, "Recruitment investigation dossier", "Investigation Summary", 1);
@@ -428,6 +445,41 @@ export function generateReport(input: ReportData) {
   doc.text(score === null ? "Not available" : `${score}%`, MARGIN + 8, 255);
   writeWrapped(doc, `Risk ${clean(data.verification?.riskScore, "Not available")}%; verification confidence ${clean(data.verification?.verificationConfidence, "Not available")}%; source confidence ${clean(data.verification?.sourceConfidence, "Not available")}%; evidence coverage ${clean(data.verification?.evidenceCoverage, "Not available")}%. ${clean(data.verification?.recommendedAction)}`, 86, 235, 105, 7.5, COLORS.ink);
   footer(doc, data, 5, generatedAt);
+
+  if (payment) {
+    doc.addPage();
+    pageTitle(doc, "Financial safety analysis", "Fraudulent Payment Analysis", 6);
+    sectionLabel(doc, "PayGuard AI — recruitment payment risk", MARGIN, 56);
+    const details: Array<[string, string]> = [
+      ["Payment Requested", payment.paymentRequested ? "Yes" : "No"],
+      ["Amount", clean(payment.amount)],
+      ["Payment Reason", clean(payment.paymentReason)],
+      ["Payment Destination", clean(payment.destinationType)],
+      ["Payment Context", clean(payment.paymentContext)],
+      ["UPI IDs", payment.upiIds?.length ? payment.upiIds.join(", ") : "None detected"],
+      ["Bank Details", payment.bankAccounts?.length ? payment.bankAccounts.join(", ") : "None detected"],
+      ["IFSC Codes", payment.ifscCodes?.length ? payment.ifscCodes.join(", ") : "None detected"],
+      ["QR", payment.qrCodeMentioned ? payment.qrPayload || "Detected; payload unavailable" : "Not detected"],
+      ["Risk", `${payment.riskScore ?? 0}%`],
+      ["Verdict", clean(payment.verdict, "REVIEW")],
+    ];
+    let y = 67;
+    details.forEach(([label, value], index) => {
+      const column = index % 2;
+      const row = Math.floor(index / 2);
+      const x = MARGIN + column * 91;
+      const top = y + row * 23;
+      roundedCard(doc, x, top, 86, 18, row % 2 ? COLORS.white : COLORS.pale, COLORS.line);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(6.5); setText(doc, COLORS.muted); doc.text(label.toUpperCase(), x + 4, top + 6);
+      writeWrapped(doc, value, x + 4, top + 12, 78, 7.2, COLORS.ink, "bold");
+    });
+    const redY = y + Math.ceil(details.length / 2) * 23 + 5;
+    sectionLabel(doc, "Red flags", MARGIN, redY);
+    writeWrapped(doc, payment.redFlags?.length ? payment.redFlags.join("  •  ") : "No payment red flags detected.", MARGIN, redY + 8, CONTENT_WIDTH, 8, COLORS.ink);
+    sectionLabel(doc, "Recommendation", MARGIN, redY + 30);
+    writeWrapped(doc, clean(payment.recommendation), MARGIN, redY + 38, CONTENT_WIDTH, 8, COLORS.ink);
+    footer(doc, data, 6, generatedAt);
+  }
 
   doc.save("CareerGuardian_Recruitment_Investigation_Report.pdf");
 }

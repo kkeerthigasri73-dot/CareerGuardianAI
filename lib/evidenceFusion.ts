@@ -9,6 +9,7 @@ export interface EvidenceItem {
   source: string;
 }
 type Input = Record<string, unknown> & { sourceType?: RecruitmentSource | string };
+import { analyzePayGuard, type PayGuardResult } from "@/lib/payguard";
 const text = (value: unknown) => typeof value === "string" ? value.trim() : "";
 const present = (value: unknown) => text(value).length > 0;
 
@@ -22,6 +23,7 @@ export function fuseRecruitmentEvidence(
   input: Input,
   domain: { passed: boolean; message: string },
   email: { passed: boolean; message: string },
+  payGuard: PayGuardResult = analyzePayGuard(input),
 ) {
   const sourceType = (text(input.sourceType) || "unknown") as RecruitmentSource;
   const labels: Record<string, string> = {
@@ -40,7 +42,7 @@ export function fuseRecruitmentEvidence(
   const content = [text(input.rawText), text(input.description), text(input.applicationFee), text(input.additionalEvidenceText)].join(" ").toLowerCase();
   const paymentContent = content.replace(/(?:no|without|zero|free of)\s+(?:(?:any|a)\s+)?(?:application|registration|processing|interview|training|security deposit)?\s*fee(?:\s+(?:of\s+)?(?:₹|rs\.?\s*)?\d[\d,]*)?|no payment required/gi, "");
   const recordingSignals = input.recordingRiskSignals && typeof input.recordingRiskSignals === "object" ? input.recordingRiskSignals as Record<string, unknown> : {};
-  const paymentRequest = /(?:pay|payment|transfer|send)\s+(?:a\s+)?(?:registration|processing|application|interview|training|security|job confirmation)?\s*fee|(?:registration|processing|application|interview|training|security)\s+fee\s+(?:of\s+)?(?:₹|rs\.?\s*)?\d|pay\s+(?:₹|rs\.?\s*)?\d[\d,]*|pay to (?:secure|confirm)|refundable (?:registration )?fee\s+(?:of\s+)?(?:₹|rs\.?\s*)?\d/i.test(paymentContent) || recordingSignals.paymentRequest === true;
+  const paymentRequest = payGuard.paymentRequest || recordingSignals.paymentRequest === true;
   const credentialTerms = ["otp", "upi pin", "cvv", "bank login", "password", "account pin", "debit card pin"];
   const credentialRequest = credentialTerms.filter((term) => {
     const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+");
@@ -64,7 +66,9 @@ export function fuseRecruitmentEvidence(
   addEvidence("domain-correlation", "identity", mismatch ? "HIGH_RISK" : website && emailValue ? email.passed ? "PASS" : "REVIEW" : "NOT_VERIFIED", mismatch ? EVIDENCE_SCORING.risk.domainMismatch : 0, mismatch ? "Recruiter email domain conflicts with the supplied organization website." : website && emailValue ? email.message : "Domain correlation cannot be assessed without both values.");
   addEvidence("role", "opportunity", role ? "REVIEW" : "NOT_PROVIDED", 0, role ? "Job role was extracted; role details have not been independently confirmed." : "Job role was not provided.");
   addEvidence("salary", "opportunity", salary ? "REVIEW" : "NOT_PROVIDED", 0, salary ? "Salary details were supplied but not independently confirmed." : "Salary was not provided.");
-  addEvidence("payment", "financial", paymentRequest ? "HIGH_RISK" : content ? "NOT_DETECTED" : "NOT_VERIFIED", paymentRequest ? EVIDENCE_SCORING.risk.payment : 0, paymentRequest ? "Recruitment payment request detected." : content ? "No recruitment payment demand detected in the submitted text." : "Payment risk could not be assessed without message text.");
+  const financialCritical = payGuard.severity === "CRITICAL";
+  addEvidence("payment", "financial", financialCritical || payGuard.severity === "HIGH" ? "HIGH_RISK" : payGuard.severity === "REVIEW" ? "REVIEW" : content ? "NOT_DETECTED" : "NOT_VERIFIED", payGuard.riskContribution, paymentRequest ? `PayGuard ${payGuard.severity.toLowerCase()} financial risk: ${payGuard.verificationStatus}.` : content ? "No recruitment payment demand detected in the submitted text." : "Payment risk could not be assessed without message text.");
+  if (payGuard.upiIds.length || payGuard.bankAccounts.length || payGuard.qr.detected) addEvidence("payment-destination", "financial-destination", "REVIEW", 0, `Payment destination evidence: ${payGuard.upiIds.length} UPI ID(s), ${payGuard.bankAccounts.length} contextual bank account(s), QR ${payGuard.qr.status}. Destination alone does not establish fraud.`);
   addEvidence("credentials", "personal-data", credentialRequest.length ? "HIGH_RISK" : content ? "NOT_DETECTED" : "NOT_VERIFIED", credentialRequest.length ? EVIDENCE_SCORING.risk.credential : 0, credentialRequest.length ? `Sensitive credential request detected: ${credentialRequest.join(", ")}.` : content ? "No OTP, PIN, CVV, password or bank-login request detected." : "Credential risk could not be assessed without message text.");
   addEvidence("urgency", "communication", urgency ? "REVIEW" : content ? "PASS" : "NOT_VERIFIED", urgency ? EVIDENCE_SCORING.risk.urgency : 0, urgency ? "Urgent pressure wording detected." : content ? "No strong urgency wording detected." : "Communication patterns could not be assessed.");
   addEvidence("confirmation", "independent-confirmation", institutional ? "REVIEW" : "NOT_PROVIDED", 0, institutional ? `Reported ${source} source should be independently confirmed through a known institutional channel.` : "Independent confirmation was not provided.");
@@ -102,15 +106,16 @@ export function fuseRecruitmentEvidence(
   const positiveIndependent = [domain.passed && !isOpportunityUrl, emailValue && email.passed].filter(Boolean).length;
   const negativeRisk = evidence
     .filter((item) => (item.state === "HIGH_RISK" || item.state === "REVIEW") && item.weight > 0)
+    .filter((item) => item.id !== "payment")
     .reduce((total, item) => total + item.weight, 0);
-  const riskScore = Math.max(0, Math.min(100, negativeRisk));
+  const riskScore = Math.max(0, Math.min(100, negativeRisk + payGuard.riskContribution));
   const repeatSupport = repeatedEvidence.length ? Math.min(6, repeatedEvidence.length * 3) : 0;
   const verificationConfidence = Math.max(5, Math.min(95, Math.round(evidenceCoverage * EVIDENCE_SCORING.confidence.coverageWeight + positiveIndependent * EVIDENCE_SCORING.confidence.independentSignal + repeatSupport)));
   let sourceConfidence = !opportunitySourceProvided ? EVIDENCE_SCORING.sourceConfidence.unknown : institutional ? EVIDENCE_SCORING.sourceConfidence.institutional : EVIDENCE_SCORING.sourceConfidence.reported;
   if (emailValue && email.passed) sourceConfidence += EVIDENCE_SCORING.sourceConfidence.corroboration;
   if (mismatch) sourceConfidence -= 18;
   sourceConfidence = Math.max(10, Math.min(90, sourceConfidence));
-  const materialRisk = paymentRequest || credentialRequest.length > 0 || mismatch || riskScore >= EVIDENCE_SCORING.risk.highRiskVerdict;
+  const materialRisk = financialCritical || payGuard.severity === "HIGH" || credentialRequest.length > 0 || mismatch || riskScore >= EVIDENCE_SCORING.risk.highRiskVerdict;
   const sufficientSupport = positiveIndependent + Number(opportunitySourceProvided) + Number(Boolean(company) && Boolean(role)) >= EVIDENCE_SCORING.confidence.lowRiskSupportMinimum;
   const unresolvedReview = urgency || (website && emailValue && !email.passed);
   const verdict = materialRisk ? "HIGH RISK" : unresolvedReview || verificationConfidence < EVIDENCE_SCORING.confidence.lowRiskMinimum || !sufficientSupport ? "REVIEW" : "LOW RISK";
@@ -129,7 +134,7 @@ export function fuseRecruitmentEvidence(
   addLayer(6,"Website & Domain Correlation",stateFor("domain-correlation"),evidence.find((item)=>item.id==="domain-correlation")?.explanation||"");
   addLayer(7,"Opportunity / Job Consistency",company&&role?"REVIEW":company||role?"NOT_VERIFIED":"NOT_PROVIDED",company&&role?"Organization and role supplied; independent consistency check remains incomplete.":"Opportunity details are incomplete.");
   addLayer(8,"Communication Pattern Analysis",urgency?"REVIEW":content?"PASS":"NOT_VERIFIED",urgency?"Urgent pressure wording detected.":content?"No strong urgency wording detected.":"Message content unavailable.");
-  addLayer(9,"Financial / Payment Risk",paymentRequest?"HIGH_RISK":content?"NOT_DETECTED":"NOT_VERIFIED",paymentRequest?"Recruitment payment demand detected.":content?"No recruitment payment demand detected.":"Message content unavailable.");
+  addLayer(9,"Financial / Payment Risk",financialCritical||payGuard.severity==="HIGH"?"HIGH_RISK":payGuard.severity==="REVIEW"?"REVIEW":content?"NOT_DETECTED":"NOT_VERIFIED",paymentRequest?`PayGuard ${payGuard.severity.toLowerCase()} financial assessment. ${payGuard.paymentChannel.type} channel; QR ${payGuard.qr.status}.`:content?"No recruitment payment demand detected.":"Message content unavailable.");
   addLayer(10,"Credential / Personal-Data Risk",credentialRequest.length?"HIGH_RISK":content?"NOT_DETECTED":"NOT_VERIFIED",credentialRequest.length?`Sensitive request: ${credentialRequest.join(", ")}.`:content?"No sensitive credential request detected.":"Message content unavailable.");
   addLayer(11,"Independent / Institutional Confirmation",institutional?"REVIEW":"NOT_PROVIDED",institutional?`Confirm through a known ${source} contact.`:"No independent confirmation supplied.");
   addLayer(12,"AI Evidence-Fusion Assessment",verdict==="HIGH RISK"?"HIGH_RISK":verdict==="LOW RISK"?"PASS":"REVIEW",`Risk ${riskScore}%; verification confidence ${verificationConfidence}%; evidence coverage ${evidenceCoverage}%.`);
@@ -137,7 +142,7 @@ export function fuseRecruitmentEvidence(
   layers[11].score = trustScore;
   layers[11].passed = verdict === "LOW RISK";
   return {
-    sourceType, sourceLabel: source, riskScore, verificationConfidence, sourceConfidence, evidenceCoverage,
+    sourceType, sourceLabel: source, riskScore, verificationConfidence, sourceConfidence, evidenceCoverage, payGuard,
     trustScore, verdict, layers, evidence, positiveSignals, negativeSignals, missingSignals, recommendedAction,
     independentConfirmation: { status: "UNAVAILABLE", channel: institutional ? "institutional" : "company" },
   };

@@ -59,6 +59,10 @@ const VerificationSchema = new Schema(
       channel: String,
     },
     recommendedAction: String,
+    payGuard: { type: Schema.Types.Mixed, default: undefined },
+    paymentFraudDetection: { type: Schema.Types.Mixed, default: undefined },
+    threatIntelligence: { type: Schema.Types.Mixed, default: undefined },
+    linkSentinel: { type: Schema.Types.Mixed, default: undefined },
     aiExplanation: String,
     // Optional second-stage comparison; absent on historical records.
     guardianTrustCheck: { type: Schema.Types.Mixed, default: undefined },
