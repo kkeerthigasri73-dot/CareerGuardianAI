@@ -153,21 +153,7 @@ export function SiteHeader() {
             DESKTOP NAVIGATION
         ================================================= */}
 
-        <nav className="hidden h-full min-w-0 flex-1 items-center justify-center gap-2 xl:gap-4 lg:flex">
-          {/* HOME */}
-
-          <Link
-            href="/"
-            onClick={closeNavigation}
-            className={`inline-flex h-10 items-center justify-center rounded-lg px-2 text-sm font-bold leading-none transition xl:px-3 ${
-              isActive("/")
-                ? "bg-indigo-50 text-indigo-700"
-                : "text-slate-700 hover:bg-slate-100 hover:text-cyan-700"
-            }`}
-          >
-            {t("home")}
-          </Link>
-
+        <nav className="hidden h-full min-w-0 flex-1 items-center justify-center gap-1 lg:flex xl:gap-2">
           {/* =================================================
               VERIFY
           ================================================= */}
@@ -175,30 +161,14 @@ export function SiteHeader() {
           <Link
             href="/verify"
             onClick={closeNavigation}
-            className={`inline-flex h-10 items-center justify-center rounded-lg px-2 text-sm font-bold leading-none transition xl:px-3 ${
+            className={`inline-flex h-10 items-center justify-center rounded-lg px-3 text-sm font-bold leading-none transition ${
               isActive("/verify") || isActive("/analyze")
-                ? "bg-indigo-50 text-indigo-700"
-                : "text-slate-700 hover:bg-slate-100 hover:text-cyan-700"
+                ? "bg-blue-800 text-white"
+                : "bg-blue-700 text-white hover:bg-blue-800"
             }`}
           >
             {t("verify")}
           </Link>
-
-          {/* =================================================
-              GROW
-          ================================================= */}
-
-          <DesktopDropdown
-            title={t("grow")}
-            items={growItems}
-            pathname={pathname}
-            open={openDropdown === "grow"}
-            onToggle={() => toggleDropdown("grow")}
-            onNavigate={closeNavigation}
-            isActive={growItems.some((item) =>
-              isActive(item.href)
-            )}
-          />
 
           {/* =================================================
               RECOVER
@@ -207,15 +177,27 @@ export function SiteHeader() {
           <Link
             href="/emergency"
             onClick={closeNavigation}
-            className={`inline-flex h-10 items-center justify-center rounded-lg px-2 text-sm font-bold leading-none transition xl:px-3 ${
+            className={`inline-flex h-10 items-center justify-center rounded-lg border border-red-200 px-3 text-sm font-bold leading-none transition ${
               isActive("/emergency")
-                ? "bg-indigo-50 text-indigo-700"
-                : "text-slate-700 hover:bg-slate-100 hover:text-cyan-700"
+                ? "bg-red-50 text-red-800"
+                : "text-red-700 hover:bg-red-50"
             }`}
           >
             <TriangleAlert aria-hidden="true" className="mr-2 h-4 w-4" />
             {t("recover")}
           </Link>
+
+          {/* BUILD YOUR CAREER */}
+
+          <DesktopDropdown
+            title={t("grow")}
+            items={growItems}
+            pathname={pathname}
+            open={openDropdown === "grow"}
+            onToggle={() => toggleDropdown("grow")}
+            onNavigate={closeNavigation}
+            isActive={growItems.some((item) => isActive(item.href))}
+          />
 
           {/* =================================================
               DASHBOARD
@@ -276,64 +258,46 @@ export function SiteHeader() {
       {mobileOpen && (
         <div className="border-t border-slate-200 bg-white lg:hidden">
           <nav className="space-y-2 p-5">
-            {/* HOME */}
-
-            <Link
-              href="/"
-              onClick={closeNavigation}
-              className={`flex items-center rounded-xl px-4 py-3 text-sm font-semibold transition ${
-                isActive("/")
-                  ? "bg-indigo-50 text-indigo-700"
-                  : "text-slate-700 hover:bg-slate-100 hover:text-blue-600"
-              }`}
-            >
-              {t("home")}
-            </Link>
-
             {/* VERIFY */}
 
             <Link
               href="/verify"
               onClick={closeNavigation}
-              className={`block rounded-xl px-4 py-3 text-sm font-semibold transition ${
+              className={`block rounded-xl px-4 py-3 text-sm font-bold transition ${
                 isActive("/verify") || isActive("/analyze")
-                  ? "bg-indigo-50 text-indigo-700"
-                  : "text-slate-700 hover:bg-slate-100 hover:text-blue-600"
+                  ? "bg-blue-800 text-white"
+                  : "bg-blue-700 text-white hover:bg-blue-800"
               }`}
             >
               {t("verify")}
             </Link>
-
-            {/* GROW */}
-
-            <MobileSection
-              title={t("grow")}
-              section="grow"
-              items={growItems}
-              open={openMobileSection === "grow"}
-              onToggle={() =>
-                setOpenMobileSection((current) =>
-                  current === "grow" ? null : "grow"
-                )
-              }
-              onNavigate={closeNavigation}
-              isItemActive={isActive}
-            />
 
             {/* RECOVER */}
 
             <Link
               href="/emergency"
               onClick={closeNavigation}
-              className={`block rounded-xl px-4 py-3 text-sm font-semibold transition ${
+              className={`flex items-center rounded-xl border px-4 py-3 text-sm font-semibold transition ${
                 isActive("/emergency")
-                  ? "bg-indigo-50 text-indigo-700"
-                  : "text-slate-700 hover:bg-slate-100 hover:text-blue-600"
+                  ? "border-red-200 bg-red-50 text-red-800"
+                  : "border-transparent text-red-700 hover:border-red-200 hover:bg-red-50"
               }`}
             >
               <TriangleAlert aria-hidden="true" className="mr-3 h-4 w-4" />
               {t("recover")}
             </Link>
+
+              {/* BUILD YOUR CAREER */}
+
+              <MobileSection
+                title={t("grow")}
+                section="grow"
+                items={growItems}
+                open={openMobileSection === "grow"}
+                onToggle={() => setOpenMobileSection((current) => current === "grow" ? null : "grow")}
+                onNavigate={closeNavigation}
+                isItemActive={isActive}
+              />
 
             {/* DASHBOARD */}
 

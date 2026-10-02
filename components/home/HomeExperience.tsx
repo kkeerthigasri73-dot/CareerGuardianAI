@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/src/context/LanguageContext";
 import { speakText } from "@/src/lib/speech";
@@ -31,10 +32,9 @@ const storageKeys = {
 };
 
 const introCards = [
-  { number: "01", label: "VERIFY", title: "Check before you commit.", description: "Check whether a recruitment opportunity is trustworthy before you apply.", icon: ShieldCheck, color: "cyan" },
-  { number: "02", label: "BUILD YOUR CAREER", title: "Build your next advantage.", description: "Build your Career DNA, improve your resume, practice interviews and discover opportunities.", icon: TrendingUp, color: "blue" },
-  { number: "03", label: "RAISE A COMPLAINT", title: "Know what to do next.", description: "Get guidance when you encounter suspicious recruitment activity or a scam.", icon: Radar, color: "violet" },
-  { number: "04", label: "AI GUARDIAN", title: "One layer. Every career decision.", description: "One intelligent career protection layer connecting verification, growth and recovery.", icon: BrainCircuit, color: "pink" },
+  { number: "01", label: "verify", title: "Is this job or internship real?", description: "Verify the opportunity before you trust it or share information.", icon: ShieldCheck, color: "cyan" },
+  { number: "02", label: "recover", title: "Already encountered fraud?", description: "Report it, preserve evidence and get guided recovery support.", icon: CircleAlert, color: "red" },
+  { number: "03", label: "grow", title: "Once you're safe, build your career.", description: "Build your Career DNA, improve your resume, practice interviews and discover opportunities.", icon: TrendingUp, color: "blue" },
 ] as const;
 
 export function resetCareerGuardianOnboarding() {
@@ -55,6 +55,7 @@ export function stopWelcomeVoice() {
 
 export default function HomeExperience() {
   const { language, t } = useLanguage();
+  const router = useRouter();
   const [entryChoice, setEntryChoice] = useState<"website" | "app" | null>(null);
   const [onboarding, setOnboarding] = useState<"choice" | "welcome" | "survey" | "summary" | null>(null);
   const [step, setStep] = useState(0);
@@ -84,6 +85,11 @@ export default function HomeExperience() {
   function chooseEntry(choice: "website" | "app") {
     window.localStorage.setItem(storageKeys.mode, choice);
     setEntryChoice(choice);
+    if (choice === "app") {
+      setOnboarding(null);
+      router.push("/dashboard");
+      return;
+    }
     setOnboarding("welcome");
   }
 
@@ -161,9 +167,10 @@ function WelcomeStep({ onVoice, voiceOn, onContinue, onSkip }: { onVoice: () => 
 }
 
 function SurveyStep({ step, onContinue, onSkip }: { step: number; onContinue: () => void; onSkip: () => void }) {
+  const { t } = useLanguage();
   const card = introCards[step];
   const Icon = card.icon;
-  return <Overlay><div className="w-full max-w-3xl"><div className="flex items-center justify-between text-sm font-bold text-slate-400"><span>CareerGuardian AI introduction</span><span>{card.number} / 04</span></div><div className="mt-4 h-1.5 rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-violet-400 transition-all duration-500" style={{ width: `${((step + 1) / introCards.length) * 100}%` }} /></div><div className="mt-14 rounded-[2rem] border border-white/15 bg-white/[0.08] p-8 shadow-2xl backdrop-blur-xl sm:p-12"><div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-300 text-slate-950 shadow-[0_0_45px_rgba(34,211,238,0.2)]"><Icon className="h-8 w-8" /></div><p className="mt-10 text-sm font-black uppercase tracking-[0.2em] text-cyan-300">{card.label}</p><h1 className="mt-4 text-3xl font-black text-white sm:text-5xl">{card.title}</h1><p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">{card.description}</p><div className="mt-10 flex flex-wrap items-center gap-4"><button type="button" onClick={onContinue} className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-6 py-3.5 font-bold text-slate-950 hover:bg-cyan-200">{step === introCards.length - 1 ? "Continue" : "Continue"} <ArrowRight className="h-5 w-5" /></button><button type="button" onClick={onSkip} className="text-sm font-semibold text-slate-400 underline-offset-4 hover:text-white hover:underline">Skip Introduction</button></div></div></div></Overlay>;
+  return <Overlay><div className="w-full max-w-3xl"><div className="flex items-center justify-between text-sm font-bold text-slate-400"><span>CareerGuardian AI introduction</span><span>{card.number} / {introCards.length.toString().padStart(2, "0")}</span></div><div className="mt-4 h-1.5 rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-violet-400 transition-all duration-500" style={{ width: `${((step + 1) / introCards.length) * 100}%` }} /></div><div className="mt-14 rounded-[2rem] border border-white/15 bg-white/[0.08] p-8 shadow-2xl backdrop-blur-xl sm:p-12"><div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-300 text-slate-950 shadow-[0_0_45px_rgba(34,211,238,0.2)]"><Icon className="h-8 w-8" /></div><p className="mt-10 text-sm font-black uppercase tracking-[0.2em] text-cyan-300">{t(card.label)}</p><h1 className="mt-4 text-3xl font-black text-white sm:text-5xl">{card.title}</h1><p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">{card.description}</p><div className="mt-10 flex flex-wrap items-center gap-4"><button type="button" onClick={onContinue} className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-6 py-3.5 font-bold text-slate-950 hover:bg-cyan-200">Continue <ArrowRight className="h-5 w-5" /></button><button type="button" onClick={onSkip} className="text-sm font-semibold text-slate-400 underline-offset-4 hover:text-white hover:underline">Skip Introduction</button></div></div></div></Overlay>;
 }
 
 function SummaryStep({ onEnter }: { onEnter: () => void }) {
@@ -188,21 +195,29 @@ function Hero() {
             <ShieldCheck className="h-4 w-4" /> {t("home.hero.badge")}
           </span>
           <h1 className="mt-7 max-w-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-3xl font-bold leading-[1.05] tracking-tight text-transparent sm:text-4xl md:text-5xl">
-            {t("home.hero.titleFirst")}<br />{t("home.hero.titleSecond")}
+            {t("home.hero.safetyTitleFirst")}<br />{t("home.hero.safetyTitleSecond")}
           </h1>
           <p className="mt-7 max-w-xl text-lg leading-8 text-slate-600">
-            {t("home.hero.description")}
+            {t("home.hero.safetyDescription")}
           </p>
-          <div className="mt-9 flex flex-wrap gap-3">
-            <Link href="/analyze" className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3.5 font-bold text-white shadow-lg shadow-cyan-100 transition hover:-translate-y-0.5 hover:bg-cyan-700">
+          <div className="mt-9 grid gap-3 sm:grid-cols-3">
+            <Link href="/verify" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 py-3.5 font-bold text-white shadow-lg shadow-blue-100 transition hover:-translate-y-0.5 hover:bg-blue-800">
               {t("home.hero.verifyButton")} <ArrowRight className="h-5 w-5" />
             </Link>
-            <Link href="/career-dna" className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-5 py-3.5 font-bold text-slate-800 transition hover:border-pink-400 hover:text-pink-700">
-              {t("home.hero.exploreButton")}
+            <Link href="/emergency" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-3.5 text-center font-bold text-red-700 transition hover:bg-red-50">
+              <CircleAlert aria-hidden="true" className="h-5 w-5 shrink-0" />{t("home.hero.recoveryButton")}
+            </Link>
+            <Link href="/career-dna" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3.5 text-center font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">
+              {t("home.hero.careerButton")}
             </Link>
           </div>
+          <div className="mt-2 grid gap-2 text-xs leading-5 text-slate-500 sm:grid-cols-3">
+            <span className="hidden sm:block" />
+            <span>{t("recoverSubtitle")}</span>
+            <span>{t("growSubtitle")}</span>
+          </div>
           <p className="mt-7 text-sm font-bold tracking-wide text-slate-500">
-            {t("home.hero.tagline")}
+            {t("home.hero.priorityTagline")}
           </p>
         </div>
         <GuardianConsole />
@@ -238,8 +253,13 @@ function GuardianConsole() {
 }
 
 function Journey() {
-  const stages = [{ number: "01", title: "PROTECT", description: "Spot recruitment risks before they cost you.", items: ["Recruitment Verification", "Trust Score", "Community Confidence"], icon: ShieldCheck, color: "text-cyan-700 bg-cyan-50" }, { number: "02", title: "GROW", description: "Turn your potential into career readiness.", items: ["Career DNA", "Resume", "Interview", "Placement"], icon: TrendingUp, color: "text-emerald-700 bg-emerald-50" }, { number: "03", title: "SUCCEED", description: "Move from preparation to the right opportunity.", items: ["Job Matching", "Job Alerts", "Opportunity Radar"], icon: Radar, color: "text-amber-700 bg-amber-50" }, { number: "04", title: "RECOVER", description: "When something goes wrong, know what to do next.", items: ["Report", "Evidence", "Guidance"], icon: CircleAlert, color: "text-red-700 bg-red-50" }];
-  return <section id="journey" className="journey-section bg-white py-20"><div className="mx-auto max-w-7xl px-6"><div className="max-w-2xl"><p className="text-sm font-bold uppercase tracking-[0.18em] text-black">The CareerGuardian journey</p><h2 className="mt-4 text-3xl font-black text-black md:text-4xl">One Guardian. Every Career Decision.</h2><p className="mt-4 text-lg leading-8 text-black">A single intelligence layer that helps you move forward with better signals, stronger preparation and fewer surprises.</p></div><div className="mt-12 grid gap-4 lg:grid-cols-4">{stages.map(({ icon: Icon, ...stage }) => <article key={stage.number} className="relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"><div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${stage.color}`}><Icon className="h-6 w-6" /></div><p className="mt-7 text-sm font-black tracking-[0.16em] text-black">{stage.number}</p><h3 className="mt-2 text-2xl font-black text-black">{stage.title}</h3><p className="mt-3 min-h-14 text-sm leading-6 text-black">{stage.description}</p><ul className="mt-5 space-y-2 text-sm font-semibold text-black">{stage.items.map((item) => <li key={item} className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" />{item}</li>)}</ul></article>)}</div></div></section>;
+  const { t } = useLanguage();
+  const stages = [
+    { number: "01", title: t("verify"), description: t("home.journey.verifyQuestion"), items: ["Recruitment Verification", "Trust Score", "Community Confidence"], icon: ShieldCheck, color: "text-cyan-700 bg-cyan-50" },
+    { number: "02", title: t("recover"), description: t("recoverSubtitle"), items: ["Report", "Preserve Evidence", "Recovery Guidance"], icon: CircleAlert, color: "text-red-700 bg-red-50" },
+    { number: "03", title: t("grow"), description: t("growSubtitle"), items: ["Career DNA", "Resume", "Interview", "Placement"], icon: TrendingUp, color: "text-emerald-700 bg-emerald-50" },
+  ];
+  return <section id="journey" className="journey-section bg-white py-20"><div className="mx-auto max-w-7xl px-6"><div className="max-w-2xl"><p className="text-sm font-bold uppercase tracking-[0.18em] text-black">The CareerGuardian journey</p><h2 className="mt-4 text-3xl font-black text-black md:text-4xl">{t("home.journey.priorityHeading")}</h2><p className="mt-4 text-lg leading-8 text-black">{t("home.journey.priorityDescription")}</p></div><div className="mt-12 grid gap-4 lg:grid-cols-3">{stages.map(({ icon: Icon, ...stage }) => <article key={stage.number} className="relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"><div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${stage.color}`}><Icon className="h-6 w-6" /></div><p className="mt-7 text-sm font-black tracking-[0.16em] text-black">{stage.number}</p><h3 className="mt-2 text-2xl font-black text-black">{stage.title}</h3><p className="mt-3 min-h-14 text-sm leading-6 text-black">{stage.description}</p><ul className="mt-5 space-y-2 text-sm font-semibold text-black">{stage.items.map((item) => <li key={item} className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-600" />{item}</li>)}</ul></article>)}</div></div></section>;
 }
 
 function Intelligence() {
@@ -256,5 +276,6 @@ function Demo() {
 }
 
 function FinalCta() {
-  return <section id="recover" className="bg-white px-6 py-20"><div className="mx-auto max-w-5xl rounded-3xl bg-gradient-to-br from-blue-700 to-cyan-600 px-6 py-14 text-center text-white shadow-2xl sm:px-12"><h2 className="text-3xl font-black md:text-4xl">Your Career Should Move Forward. Safely.</h2><p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-blue-50">Verify the opportunity. Understand your path. Build your skills. Find what fits. And move forward with confidence.</p><div className="mt-8 flex flex-wrap justify-center gap-3"><Link href="/signup" className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3.5 font-bold text-blue-700 hover:bg-cyan-50">Start Your Career Journey <ArrowRight className="h-5 w-5" /></Link><Link href="/analyze" className="inline-flex items-center gap-2 rounded-xl border border-white/50 px-5 py-3.5 font-bold text-white hover:bg-white/10">Verify an Opportunity</Link></div><p className="mt-8 text-sm font-bold tracking-wide text-blue-100">CareerGuardian AI · Protect · Verify · Grow · Succeed</p></div></section>;
+  const { t } = useLanguage();
+  return <section id="recover" className="bg-white px-6 py-20"><div className="mx-auto max-w-5xl rounded-3xl bg-gradient-to-br from-blue-700 to-cyan-600 px-6 py-14 text-center text-white shadow-2xl sm:px-12"><h2 className="text-3xl font-black md:text-4xl">{t("home.hero.safetyTitleFirst")} {t("home.hero.safetyTitleSecond")}</h2><p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-blue-50">{t("home.hero.safetyDescription")}</p><div className="mt-8 flex flex-wrap justify-center gap-3"><Link href="/verify" className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3.5 font-bold text-blue-700 hover:bg-cyan-50">{t("home.hero.verifyButton")} <ArrowRight className="h-5 w-5" /></Link><Link href="/emergency" className="inline-flex items-center gap-2 rounded-xl border border-white/50 px-5 py-3.5 font-bold text-white hover:bg-white/10"><CircleAlert className="h-4 w-4" />{t("recover")}</Link><Link href="/career-dna" className="inline-flex items-center gap-2 rounded-xl px-4 py-3.5 font-semibold text-blue-50 hover:bg-white/10">{t("grow")}</Link></div><p className="mt-8 text-sm font-bold tracking-wide text-blue-100">{t("home.hero.priorityTagline")}</p></div></section>;
 }

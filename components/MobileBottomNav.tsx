@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, BrainCircuit, Home, ShieldCheck, UserRound, type LucideIcon } from "lucide-react";
+import { Bell, BrainCircuit, ShieldCheck, TriangleAlert, UserRound, type LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "@/src/context/LanguageContext";
 import type { TranslationKey } from "@/src/lib/translations";
 
 const items: { href: string; label: TranslationKey; icon: LucideIcon }[] = [
-  { href: "/", label: "home", icon: Home },
   { href: "/verify", label: "verify", icon: ShieldCheck },
+  { href: "/emergency", label: "recover", icon: TriangleAlert },
   { href: "/career-dna", label: "grow", icon: BrainCircuit },
   { href: "/dashboard", label: "dashboard", icon: Bell },
   { href: "/profile", label: "myProfile", icon: UserRound },
