@@ -40,6 +40,8 @@ const VerificationSchema = new Schema(
     inputType: { type: String, default: "unknown" },
     inputMethod: { type: String, default: "unknown" },
     riskScore: Number,
+    riskStatus: String,
+    riskAssessment: { type: Schema.Types.Mixed, default: undefined },
     verificationConfidence: Number,
     sourceConfidence: Number,
     evidenceCoverage: { type: Number, default: 0 },

@@ -8,7 +8,7 @@ import { findVerifiedOrganization } from "@/lib/linkSentinel/registry";
 const SHORTENERS = new Set(["bit.ly", "tinyurl.com", "is.gd", "t.co", "ow.ly", "buff.ly", "cutt.ly", "rebrand.ly", "rb.gy", "shorturl.at", "tiny.cc", "lnkd.in"]);
 const SUSPICIOUS_TLDS = new Set(["tech", "site", "xyz", "top", "online", "info", "co"]);
 const MULTI_LABEL_SUFFIXES = new Set(["gov.in", "nic.in", "co.in", "ac.in", "res.in", "gov.uk", "co.uk", "org.uk", "com.au", "net.au", "co.nz"]);
-export const linkSentinelConfig = { enabled: process.env.LINK_SENTINEL_ENABLED === "true" };
+export const linkSentinelConfig = { enabled: process.env.LINK_SENTINEL_ENABLED !== "false" };
 
 export type DomainStatus = "OFFICIAL_MATCH" | "VERIFIED_SUBDOMAIN" | "LOOKALIKE_DOMAIN" | "TYPOSQUATTING_DETECTED" | "SUSPICIOUS_DOMAIN" | "UNVERIFIED_DOMAIN" | "SHORTENED_URL" | "UNKNOWN_ORGANIZATION";
 type Difference = { official: string; submitted: string; explanation: string };

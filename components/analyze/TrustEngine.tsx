@@ -87,6 +87,10 @@ export default function TrustEngine({
   );
 
   const results = runTrustEngine(data);
+  const primaryLayers = results.filter((layer) => /document|ocr|government|organization|notification|website|domain|financial|payment|qr/i.test(layer.name));
+  const contextLayers = results.filter((layer) => /threat|communication|source|keyword|content|nlp|pattern/i.test(layer.name) && !/government|notification|domain|payment/i.test(layer.name));
+  const categorizedLayers = new Set([...primaryLayers, ...contextLayers].map((layer) => layer.layer));
+  const supportingLayers = results.filter((layer) => !categorizedLayers.has(layer.layer));
 
   const totalScore = results.reduce(
     (sum, item) => sum + item.score,
@@ -280,43 +284,10 @@ export default function TrustEngine({
               12-Layer Investigation Report
             </h3>
 
-            <div className="space-y-3">
-
-              {results.map((layer, index) => (
-
-                <div
-                  key={index}
-                  className="flex items-center justify-between rounded-xl border border-slate-200 p-4"
-                >
-
-                  <div>
-
-                    <h4 className="font-semibold">
-                      {layer.name}
-                    </h4>
-
-                    <p className="text-sm text-slate-500">
-                      {layer.message}
-                    </p>
-
-                  </div>
-
-                  <span
-                    className={`rounded-full px-4 py-2 text-sm font-bold ${
-                      layer.state === "HIGH_RISK"
-                        ? "bg-red-100 text-red-700"
-                        : layer.state === "PASS" || (!layer.state && layer.passed)
-                        ? "bg-green-100 text-green-700"
-                        : "bg-amber-100 text-amber-800"
-                    }`}
-                  >
-                    {layer.state === "HIGH_RISK" ? "HIGH RISK" : layer.state === "NOT_PROVIDED" ? "NOT PROVIDED" : layer.state === "NOT_APPLICABLE" ? "N/A" : layer.state === "NOT_DETECTED" ? "NOT DETECTED" : layer.state === "NOT_VERIFIED" ? "NOT VERIFIED" : layer.state === "REVIEW" ? "REVIEW" : layer.passed ? "PASS" : "NOT VERIFIED"}
-                  </span>
-
-                </div>
-
-              ))}
-
+            <div className="space-y-5">
+              <LayerTier title="Tier 1 · Primary Government Authenticity Evidence" layers={primaryLayers} />
+              <LayerTier title="Tier 2 · Threat & Context Intelligence" layers={contextLayers} />
+              <LayerTier title="Tier 3 · Supporting Verification" layers={supportingLayers} />
             </div>
 
           </div>
@@ -338,60 +309,6 @@ export default function TrustEngine({
               <EvidenceGroup title="RISK SIGNALS" items={data?.verification?.negativeSignals || []} empty="No high-risk indicators detected in the submitted content." />
             </div>
 
-          </div>
-          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-slate-800">
-            <h3 className="font-bold">ThreatNet · Threat Intelligence</h3>
-            {!verification?.threatIntelligence?.enabled ? (
-              <p className="mt-2 text-sm">Not enabled</p>
-            ) : verification.threatIntelligence.matched ? (
-              <>
-                <p className="mt-2">Similar recruitment content has been reported {verification.threatIntelligence.reportCount} {verification.threatIntelligence.reportCount === 1 ? "time" : "times"}.</p>
-                <p className="mt-1 text-sm">{verification.threatIntelligence.threatLevel.replaceAll("_", " ")} · Similarity {verification.threatIntelligence.similarityScore}% · {verification.threatIntelligence.reportsLast24Hours} in the last 24 hours</p>
-                <p className="mt-2 text-xs text-slate-600">Community reports are supporting evidence only and do not determine the verification result.</p>
-              </>
-            ) : (
-              <p className="mt-2 text-sm">Enabled · No similar recruitment reports found.</p>
-            )}
-          </div>
-          <div className="mt-5 rounded-2xl border border-cyan-200 bg-cyan-50 p-5 text-slate-800">
-            <h3 className="font-bold">Link Sentinel</h3>
-            {verification?.linkSentinel?.status === "DISABLED" ? (
-              <p className="mt-2 text-sm">Not enabled</p>
-            ) : verification?.linkSentinel?.status === "UNAVAILABLE" || !verification?.linkSentinel ? (
-              <p className="mt-2 text-sm">Link analysis unavailable for this verification.</p>
-            ) : verification.linkSentinel.urlsAnalyzed.length ? (
-              <>
-                <p className="mt-2 text-sm">{verification.linkSentinel.urlsAnalyzed.length} link(s) analyzed · {verification.linkSentinel.urlsAnalyzed.filter((link: any) => link.domainAnalysis.domainMatch).length} official match(es) · {verification.linkSentinel.urlsAnalyzed.filter((link: any) => link.domainAnalysis.isLookalike).length} lookalike(s)</p>
-                <div className="mt-3 space-y-2">
-                  {verification.linkSentinel.urlsAnalyzed.map((link: any, index: number) => (
-                    <details key={`${link.normalizedUrl}-${index}`} className="rounded-xl bg-white/80 p-3 text-sm">
-                      <summary className="cursor-pointer font-semibold">{link.domainAnalysis.domainStatus.replaceAll("_", " ")} · {link.domainAnalysis.hostname || "Invalid URL"}</summary>
-                      <div className="mt-3 space-y-2 break-words">
-                        <p><span className="font-semibold">Claimed organization:</span> {link.domainAnalysis.claimedOrganization}</p>
-                        <p><span className="font-semibold">Official website:</span> {link.domainAnalysis.officialWebsite || "Could not independently verify"}</p>
-                        <p><span className="font-semibold">Submitted website:</span> {link.originalUrl}</p>
-                        {link.resolvedUrl && link.resolvedUrl !== link.normalizedUrl && <p><span className="font-semibold">Resolved website:</span> {link.resolvedUrl}</p>}
-                        <p><span className="font-semibold">Domain match:</span> {link.domainAnalysis.domainMatch ? "Yes" : "No"} · <span className="font-semibold">Similarity:</span> {link.domainAnalysis.similarityScore}%</p>
-                        {link.domainAnalysis.differences?.map((difference: any, differenceIndex: number) => (
-                          <div key={differenceIndex} className="rounded-lg border border-amber-100 bg-amber-50 p-2">
-                            <p><span className="font-semibold">Official:</span> {difference.official}</p>
-                            <p><span className="font-semibold">Submitted:</span> {difference.submitted}</p>
-                            <p><span className="font-semibold">Difference:</span> {difference.explanation}</p>
-                          </div>
-                        ))}
-                        {link.domainAnalysis.differenceType?.length > 0 && <p><span className="font-semibold">Detected difference types:</span> {link.domainAnalysis.differenceType.map((type: string) => type.replaceAll("_", " ")).join(", ")}</p>}
-                        {link.redirectChain?.length > 1 && <p><span className="font-semibold">Redirect chain:</span> {link.redirectChain.join(" → ")}</p>}
-                        <p><span className="font-semibold">Domain risk contribution:</span> {link.domainAnalysis.domainRiskContribution}</p>
-                        {link.evidence?.length > 0 && <p className="text-xs text-slate-600">{link.evidence.join(" ")}</p>}
-                      </div>
-                    </details>
-                  ))}
-                </div>
-                <p className="mt-2 text-xs text-slate-600">HTTPS, short links, and domain patterns are supporting signals; they do not establish legitimacy or fraud by themselves.</p>
-              </>
-            ) : (
-              <p className="mt-2 text-sm">Enabled · No URLs found in the submitted recruitment content.</p>
-            )}
           </div>
 <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
@@ -424,6 +341,25 @@ export default function TrustEngine({
       )}
 
     </div>
+  );
+}
+
+function LayerTier({ title, layers, defaultOpen = false }: { title: string; layers: Array<{ layer: number; name: string; message: string; passed: boolean; state?: string }>; defaultOpen?: boolean }) {
+  if (!layers.length) return null;
+  return (
+    <details open={defaultOpen} className="rounded-xl border border-slate-200 bg-white p-4">
+      <summary className="cursor-pointer font-bold text-slate-900">{title} <span className="ml-1 text-xs font-medium text-slate-500">({layers.length})</span></summary>
+      <div className="mt-3 space-y-2">
+        {layers.map((layer) => (
+          <div key={layer.layer} className="grid gap-3 rounded-lg border border-slate-100 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+            <div className="min-w-0"><h4 className="text-sm font-semibold text-slate-800">{layer.name}</h4><p className="mt-1 break-words text-xs text-slate-500">{layer.message}</p></div>
+            <span className={`w-fit rounded-full px-3 py-1 text-[11px] font-bold ${layer.state === "HIGH_RISK" ? "bg-red-100 text-red-800" : layer.state === "PASS" || (!layer.state && layer.passed) ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+              {layer.state === "HIGH_RISK" ? "HIGH RISK" : layer.state === "NOT_PROVIDED" ? "NOT PROVIDED" : layer.state === "NOT_APPLICABLE" ? "NOT APPLICABLE" : layer.state === "NOT_DETECTED" ? "NOT DETECTED" : layer.state === "NOT_VERIFIED" ? "NOT VERIFIED" : layer.state === "REVIEW" ? "REVIEW" : layer.passed ? "PASS" : "NOT VERIFIED"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }
 

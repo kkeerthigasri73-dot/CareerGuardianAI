@@ -50,6 +50,7 @@ export default function PaymentFraudLayer({ result }: { result?: PaymentFraudDet
   if (!result) return null;
   const critical = result.verdict === "HIGH_RISK";
   const review = result.verdict === "REVIEW";
+  const paymentApplicable = Boolean(result.paymentRequested || result.qrCodeMentioned || result.upiIds?.length || result.bankAccounts?.length);
   const tone = critical ? "border-red-200 bg-red-50 text-red-800" : review ? "border-amber-200 bg-amber-50 text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-800";
   const bank = [...(result.bankAccounts || []), ...(result.ifscCodes || [])];
   return (
@@ -85,7 +86,9 @@ export default function PaymentFraudLayer({ result }: { result?: PaymentFraudDet
           <span className={`rounded-full border px-4 py-2 text-sm font-black ${tone}`}>{display(result.verdict, "REVIEW").replaceAll("_", " ")}</span>
         </div>
         {result.explanation && <p className="mt-5 text-sm leading-6 text-slate-700">{result.explanation}</p>}
-        {result.redFlags?.length ? <div className="mt-5"><h3 className="font-bold text-slate-900">Red Flags</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-red-800">{result.redFlags.map((flag, index) => <li key={`${index}-${flag}`}>{flag}</li>)}</ul></div> : <p className="mt-5 text-sm text-slate-600">No recruitment payment red flags were identified in the submitted content.</p>}
+        {!paymentApplicable ? <p className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">NOT APPLICABLE · No recruitment payment request or QR payment destination was detected.</p>
+          : result.redFlags?.length ? <div className="mt-5"><h3 className="font-bold text-slate-900">Red Flags</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-red-800">{result.redFlags.map((flag, index) => <li key={`${index}-${flag}`}>{flag}</li>)}</ul></div>
+            : <p className="mt-5 text-sm text-slate-600">No recruitment payment red flags were identified in the submitted content.</p>}
         {result.recommendation && <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-bold text-slate-900">Recommendation</h3><p className="mt-1 text-sm leading-6 text-slate-700">{result.recommendation}</p></div>}
       </div>
     </section>

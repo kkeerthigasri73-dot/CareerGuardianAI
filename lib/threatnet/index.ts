@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "crypto";
 import connectDB from "@/lib/mongodb";
 import ThreatCluster from "@/models/ThreatCluster";
+import { getThreatNetStatus, type ThreatNetStatus } from "@/lib/threatnet/status";
 
 const MAX_TEXT_LENGTH = 30000;
 const DEDUPE_WINDOW_MS = 60 * 60 * 1000;
@@ -12,7 +13,7 @@ function config(name: string, fallback: number, min: number, max: number) {
 }
 
 export const threatNetConfig = {
-  enabled: process.env.THREATNET_ENABLED === "true",
+  enabled: process.env.THREATNET_ENABLED !== "false",
   similarityThreshold: config("THREATNET_SIMILARITY_THRESHOLD", 85, 50, 100),
   risingReportThreshold: config("THREATNET_RISING_REPORT_THRESHOLD", 3, 2, 1000),
   highActivityThreshold: config("THREATNET_HIGH_ACTIVITY_THRESHOLD", 10, 3, 10000),
@@ -55,18 +56,20 @@ export type ThreatIntelligence = {
   matched: boolean; clusterId: string | null; similarityScore: number; reportCount: number;
   reportsLast24Hours: number; reportsLast72Hours: number; firstSeenAt: string | null;
   lastSeenAt: string | null; threatLevel: "NO_MATCH" | "LOCALIZED" | "RISING_TREND" | "HIGH_ACTIVITY";
-  evidence: string[];
+  evidence: string[]; status: ThreatNetStatus; reason?: string;
 };
 
 export async function analyzeThreatNet(input: { text: string; company?: string; jobRole?: string; website?: string; phone?: string; notificationNumber?: string }) : Promise<ThreatIntelligence | null> {
   if (!threatNetConfig.enabled) return null;
-  const original = input.text.slice(0, MAX_TEXT_LENGTH);
+  const original = [input.text, input.company, input.jobRole, input.website, input.phone, input.notificationNumber]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join("\n").slice(0, MAX_TEXT_LENGTH);
   const normalizedText = normalizeRecruitmentText(original);
-  if (normalizedText.length < 30) return emptyResult();
+  if (normalizedText.length < 30) return emptyResult(getThreatNetStatus({ enabled: true, sufficientEvidence: false, serviceAvailable: true, matchedExistingCluster: false }), "Insufficient recruitment text or comparable identifiers for threat matching.");
   const contentHash = createHash("sha256").update(normalizedText).digest("hex");
   const signature = shingles(normalizedText);
   const db = await connectDB();
-  if (!db) return emptyResult();
+  if (!db) return emptyResult(getThreatNetStatus({ enabled: true, sufficientEvidence: true, serviceAvailable: false, matchedExistingCluster: false }), "ThreatNet database is unavailable.");
   const now = new Date();
   const recentClusters = await ThreatCluster.find({ lastSeenAt: { $gte: new Date(now.getTime() - REPORT_RETENTION_MS) } })
     .select("clusterId contentHash normalizedText similaritySignature reportCount reportTimes firstSeenAt lastSeenAt lastSubmissionAt sampleOrganizations sampleRoles domains phoneNumbers upiIds notificationNumbers locations")
@@ -81,6 +84,7 @@ export async function analyzeThreatNet(input: { text: string; company?: string; 
     }
     if (score < threatNetConfig.similarityThreshold) matched = null;
   }
+  const matchedExistingCluster = Boolean(matched);
 
   const domains = bounded([...extract(original, /(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+/gi), ...host(input.website || "")]);
   const phones = bounded(extract(original, /(?:\+?\d[\d ().-]{7,}\d)/g).map((v) => v.replace(/\D/g, "")).filter((v) => v.length >= 10).map((v) => v.slice(-10)));
@@ -110,19 +114,33 @@ export async function analyzeThreatNet(input: { text: string; company?: string; 
       sampleOrganizations: bounded([input.company || ""]), sampleRoles: bounded([input.jobRole || ""]), domains, phoneNumbers: phones,
       upiIds, notificationNumbers: bounded([input.notificationNumber || ""]) });
   }
-  if (!cluster) return emptyResult();
+  if (!cluster) return emptyResult(getThreatNetStatus({ enabled: true, sufficientEvidence: true, serviceAvailable: false, matchedExistingCluster: false }), "Threat cluster could not be read or written.");
   const times = (cluster.reportTimes || []).map((date: Date) => new Date(date).getTime());
   const reportsLast24Hours = times.filter((time: number) => time >= now.getTime() - 86400000).length;
   const reportsLast72Hours = times.filter((time: number) => time >= now.getTime() - 72 * 3600000).length;
-  const threatLevel = reportsLast24Hours >= threatNetConfig.highActivityThreshold ? "HIGH_ACTIVITY"
+  const threatLevel = !matchedExistingCluster ? "NO_MATCH" : reportsLast24Hours >= threatNetConfig.highActivityThreshold ? "HIGH_ACTIVITY"
     : cluster.reportCount >= threatNetConfig.risingReportThreshold ? "RISING_TREND" : "LOCALIZED";
-  const evidence = [score >= threatNetConfig.similarityThreshold ? "Highly similar recruitment content detected" : "Exact recruitment content detected"];
-  if (reportsLast24Hours >= threatNetConfig.risingReportThreshold) evidence.push("Multiple submissions detected within 24 hours");
-  console.info(`[ThreatNet] ${exact ? "Exact" : "Fuzzy"} match; score ${score}; report count ${cluster.reportCount}; level ${threatLevel}`);
-  return { matched: true, clusterId: cluster.clusterId, similarityScore: score, reportCount: cluster.reportCount,
-    reportsLast24Hours, reportsLast72Hours, firstSeenAt: new Date(cluster.firstSeenAt).toISOString(),
-    lastSeenAt: new Date(cluster.lastSeenAt).toISOString(), threatLevel, evidence };
+  const evidence = matchedExistingCluster ? [exact ? "Exact recruitment content matched an existing threat cluster." : "Recruitment content matched an existing threat cluster by fuzzy similarity."] : [];
+  if (matchedExistingCluster && reportsLast24Hours >= threatNetConfig.risingReportThreshold) evidence.push("Multiple submissions detected within 24 hours");
+  console.info(`[ThreatNet] ${matchedExistingCluster ? exact ? "Exact" : "Fuzzy" : "No existing match"}; score ${score}; report count ${matchedExistingCluster ? cluster.reportCount : 0}; level ${threatLevel}`);
+  return {
+    matched: matchedExistingCluster,
+    clusterId: matchedExistingCluster ? cluster.clusterId : null,
+    similarityScore: score,
+    reportCount: matchedExistingCluster ? cluster.reportCount : 0,
+    reportsLast24Hours: matchedExistingCluster ? reportsLast24Hours : 0,
+    reportsLast72Hours: matchedExistingCluster ? reportsLast72Hours : 0,
+    firstSeenAt: matchedExistingCluster ? new Date(cluster.firstSeenAt).toISOString() : null,
+    lastSeenAt: matchedExistingCluster ? new Date(cluster.lastSeenAt).toISOString() : null,
+    threatLevel,
+    evidence,
+    status: getThreatNetStatus({ enabled: true, sufficientEvidence: true, serviceAvailable: true, matchedExistingCluster }),
+  };
 }
 
 function host(value: string) { try { return new URL(/^https?:/i.test(value) ? value : `https://${value}`).hostname.toLowerCase().replace(/^www\./, ""); } catch { return ""; } }
-function emptyResult(): ThreatIntelligence { return { matched: false, clusterId: null, similarityScore: 0, reportCount: 0, reportsLast24Hours: 0, reportsLast72Hours: 0, firstSeenAt: null, lastSeenAt: null, threatLevel: "NO_MATCH", evidence: [] }; }
+export function emptyThreatIntelligence(status: ThreatNetStatus, reason?: string): ThreatIntelligence {
+  return { matched: false, clusterId: null, similarityScore: 0, reportCount: 0, reportsLast24Hours: 0, reportsLast72Hours: 0, firstSeenAt: null, lastSeenAt: null, threatLevel: status === "MATCH_FOUND" ? "LOCALIZED" : "NO_MATCH", evidence: [], status, ...(reason ? { reason } : {}) };
+}
+
+function emptyResult(status: ThreatNetStatus, reason?: string): ThreatIntelligence { return emptyThreatIntelligence(status, reason); }

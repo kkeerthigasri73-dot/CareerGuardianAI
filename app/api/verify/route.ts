@@ -8,22 +8,31 @@ import User from "@/models/User";
 import { calculateBadges } from "@/lib/badges";
 import groq from "@/lib/groq";
 import { analyzePayGuard, toPaymentFraudDetection } from "@/lib/payguard";
-import { analyzeThreatNet, threatNetConfig, type ThreatIntelligence } from "@/lib/threatnet";
-import { analyzeLinks, linkSentinelConfig } from "@/lib/linkSentinel";
+import { analyzeThreatNet, emptyThreatIntelligence, threatNetConfig, type ThreatIntelligence } from "@/lib/threatnet";
+import { analyzeLinks, extractUrls, linkSentinelConfig } from "@/lib/linkSentinel";
 import { aggregateScamRisk } from "@/lib/linkSentinel/risk";
 import { assessGovernmentRegistryCrossCheck, governmentRegistryConfig, mergeGovernmentRegistryEvidence } from "@/lib/governmentRegistry";
 import { buildProvenanceAssessment, type DocumentProvenance } from "@/lib/documentProvenance";
+import { calculateEvidenceCoverage, calculateEvidenceWeightedScamRisk } from "@/lib/scamRisk";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { company, website, email, phone, salary, notificationNumber, applicationFee, education, jobRole, description, userId } = body;
+    const documentProvenanceInput = body.documentProvenance && typeof body.documentProvenance === "object" ? body.documentProvenance as DocumentProvenance : null;
+    const qrPayloads: string[] = Array.isArray(body.decodedQrPayloads) ? (body.decodedQrPayloads as unknown[]).filter((value): value is string => typeof value === "string") : [];
+    const embeddedUrls = documentProvenanceInput?.metadata?.embeddedUrls || [];
+    const additionalExtractedEvidence = [...qrPayloads, ...embeddedUrls].filter((value): value is string => typeof value === "string").join("\n");
+    const crossCheckInput = {
+      ...body,
+      rawText: [body.rawText, additionalExtractedEvidence].filter((value): value is string => typeof value === "string" && value.length > 0).join("\n"),
+    };
     const domain = await verifyDomain(website || "");
     const emailResult = verifyEmail(email || "", website || "");
     const payGuardSource = { ...body, rawText: [body.rawText, body.extractedText, body.text, body.transcript].filter((value): value is string => typeof value === "string").join("\n"), sourceUrl: body.inputType === "url" ? body.website || body.url : undefined };
     const payGuard = analyzePayGuard(payGuardSource);
     const evidence = fuseRecruitmentEvidence(body, domain, emailResult, payGuard);
-    const governmentVerification = governmentRegistryConfig.enabled ? assessGovernmentRegistryCrossCheck(body) : ({
+    const governmentVerification = governmentRegistryConfig.enabled ? assessGovernmentRegistryCrossCheck(crossCheckInput) : ({
       isGovernmentJobClaim: false,
       claimedOrganization: typeof company === "string" ? company : "",
       notificationNumber: typeof notificationNumber === "string" ? notificationNumber : "",
@@ -40,13 +49,24 @@ export async function POST(req: Request) {
     });
     mergeGovernmentRegistryEvidence(evidence, governmentVerification);
     const paymentFraudDetection = toPaymentFraudDetection(payGuard);
-    const linkContext = [body.rawText, body.extractedText, body.text, body.transcript, body.cleanTranscript, body.description].filter((value): value is string => typeof value === "string").join("\n").slice(0, 30000);
-    let linkSentinel = { enabled: linkSentinelConfig.enabled, status: linkSentinelConfig.enabled ? "UNAVAILABLE" : "DISABLED", urlsAnalyzed: [] as Awaited<ReturnType<typeof analyzeLinks>> };
-    if (linkSentinelConfig.enabled) {
+    const linkContext = [body.rawText, body.extractedText, body.text, body.transcript, body.cleanTranscript, body.description, ...qrPayloads, ...embeddedUrls]
+      .filter((value): value is string => typeof value === "string").join("\n").slice(0, 30000);
+    const directUrl = typeof website === "string" && website ? website : typeof body.url === "string" && body.url ? body.url : documentProvenanceInput?.facts?.applicationUrl || "";
+    const hasUrlEvidence = extractUrls(linkContext).length > 0 || Boolean(directUrl);
+    let linkSentinel = {
+      enabled: linkSentinelConfig.enabled,
+      status: hasUrlEvidence ? linkSentinelConfig.enabled ? "UNAVAILABLE" : "NOT_ENABLED" : "NOT_APPLICABLE",
+      reason: hasUrlEvidence ? linkSentinelConfig.enabled ? "URL analysis has not completed." : "Link Sentinel is disabled by configuration." : "No URL was found in the supplied evidence.",
+      urlsAnalyzed: [] as Awaited<ReturnType<typeof analyzeLinks>>,
+    };
+    if (linkSentinelConfig.enabled && hasUrlEvidence) {
       try {
-        linkSentinel.urlsAnalyzed = await analyzeLinks(linkContext, typeof company === "string" ? company : "", typeof website === "string" ? website : typeof body.url === "string" ? body.url : "");
-        linkSentinel.status = "AVAILABLE";
+        linkSentinel.urlsAnalyzed = await analyzeLinks(linkContext, typeof company === "string" ? company : "", directUrl);
+        linkSentinel.status = "ACTIVE";
+        linkSentinel.reason = linkSentinel.urlsAnalyzed.length ? "URL evidence analyzed." : "No valid URL could be analyzed.";
       } catch (error) {
+        linkSentinel.status = "UNAVAILABLE";
+        linkSentinel.reason = "Link analysis could not complete.";
         console.error("[LinkSentinel] Integration unavailable:", error instanceof Error ? error.message : "Unknown error");
       }
     }
@@ -83,9 +103,63 @@ export async function POST(req: Request) {
         evidence.layers[11].message += " Critical financial or credential evidence elevated security risk independently of URL analysis.";
       }
     }
-    const submittedProvenance = body.documentProvenance && typeof body.documentProvenance === "object"
-      ? body.documentProvenance as DocumentProvenance
-      : null;
+    const threatText = [body.rawText, body.extractedText, body.text, body.transcript, body.cleanTranscript, body.description, ...qrPayloads, ...embeddedUrls]
+      .filter((value): value is string => typeof value === "string").join("\n").slice(0, 30000);
+    let threatIntelligence: ThreatIntelligence & { enabled: boolean } = threatNetConfig.enabled
+      ? { ...emptyThreatIntelligence("ACTIVE_ANALYZING"), enabled: true }
+      : { ...emptyThreatIntelligence("NOT_ENABLED", "ThreatNet is disabled by configuration."), enabled: false };
+    try {
+      if (threatNetConfig.enabled) {
+        const result = await analyzeThreatNet({ text: threatText, company, jobRole, website, phone, notificationNumber });
+        threatIntelligence = result ? { enabled: true, ...result } : { ...emptyThreatIntelligence("UNAVAILABLE", "ThreatNet analysis did not return a result."), enabled: true };
+      }
+    } catch (error) {
+      threatIntelligence = { ...emptyThreatIntelligence("UNAVAILABLE", "ThreatNet database or analysis service is unavailable."), enabled: true };
+      console.error("[ThreatNet] Integration unavailable:", error instanceof Error ? error.message : "Unknown error");
+    }
+    const previousCoverage = evidence.evidenceCoverage;
+    const confidenceSupport = evidence.verificationConfidence - Math.round(previousCoverage * 0.55);
+    const moduleCoverage = calculateEvidenceCoverage({
+      documentUploaded: Boolean(documentProvenanceInput?.fileInfo?.sizeBytes),
+      governmentClaim: governmentVerification.isGovernmentJobClaim,
+      registryAvailable: governmentVerification.verificationStatus !== "UNAVAILABLE",
+      registryNotificationAvailable: !["UNAVAILABLE", "UNKNOWN", "NOT_APPLICABLE"].includes(governmentVerification.notificationMatch.status),
+      urlProvided: hasUrlEvidence,
+      linkAnalysisActive: linkSentinel.status === "ACTIVE",
+      textAvailable: threatText.trim().length >= 20,
+      paymentAnalysisActive: threatText.trim().length >= 20,
+      threatStatus: threatIntelligence.status,
+      sourceProvided: evidence.sourceType !== "unknown",
+    });
+    evidence.evidenceCoverage = Math.round((previousCoverage + moduleCoverage) / 2);
+    evidence.verificationConfidence = Math.max(5, Math.min(95, Math.round(evidence.evidenceCoverage * 0.55 + confidenceSupport)));
+    const riskAssessment = calculateEvidenceWeightedScamRisk({
+      governmentClaim: governmentVerification.isGovernmentJobClaim,
+      governmentVerification,
+      notificationNumber: typeof notificationNumber === "string" ? notificationNumber : "",
+      notificationMatchStatus: governmentVerification.notificationMatch.status,
+      recruitmentConsistencyStatus: governmentVerification.recruitmentConsistency.status,
+      links: linkSentinel.urlsAnalyzed,
+      payment: { paymentRequested: payGuard.paymentRequest, severity: payGuard.severity, organizationMatch: paymentFraudDetection.organizationMatch, upiIds: payGuard.upiIds, bankAccounts: payGuard.bankAccounts },
+      provenance: documentProvenanceInput || undefined,
+      threat: threatIntelligence,
+      evidence: evidence.evidence,
+    });
+    evidence.riskScore = riskAssessment.score;
+    const insufficientCoverage = evidence.evidenceCoverage < 40 || evidence.verificationConfidence < 55;
+    const riskStatus = riskAssessment.status === "LOW RISK" && insufficientCoverage ? "REVIEW REQUIRED" : riskAssessment.status;
+    evidence.verdict = evidence.riskScore >= 70 ? "HIGH RISK" : evidence.riskScore >= 20 || insufficientCoverage ? "REVIEW" : "LOW RISK";
+    evidence.trustScore = Math.round((100 - evidence.riskScore) * evidence.verificationConfidence / 100);
+    evidence.layers[11].state = evidence.verdict === "HIGH RISK" ? "HIGH_RISK" : evidence.verdict === "LOW RISK" ? "PASS" : "REVIEW";
+    evidence.layers[11].passed = evidence.verdict === "LOW RISK";
+    evidence.layers[11].score = evidence.trustScore;
+    evidence.layers[11].message = `Evidence-weighted Scam Risk ${evidence.riskScore}% (${riskStatus}); Verification Confidence ${evidence.verificationConfidence}%; Evidence Coverage ${evidence.evidenceCoverage}%.`;
+    evidence.recommendedAction = riskStatus === "HIGH RISK" || riskStatus === "CRITICAL RISK"
+      ? "Do not pay or share sensitive information. Verify the opportunity through independently sourced official contact details."
+      : riskStatus === "REVIEW REQUIRED"
+        ? "Some evidence is unavailable or needs comparison. Confirm the organization, notification and URL using an independently sourced official channel before acting."
+        : evidence.recommendedAction;
+    const submittedProvenance = documentProvenanceInput;
     const documentProvenance = submittedProvenance
       ? {
           ...submittedProvenance,
@@ -100,17 +174,6 @@ export async function POST(req: Request) {
           }),
         }
       : undefined;
-    const threatText = [body.rawText, body.extractedText, body.text, body.transcript, body.cleanTranscript, body.description]
-      .filter((value): value is string => typeof value === "string").join("\n").slice(0, 30000);
-    let threatIntelligence: (ThreatIntelligence & { enabled: boolean }) | { enabled: false; matched: false; clusterId: null; similarityScore: 0; reportCount: 0; reportsLast24Hours: 0; reportsLast72Hours: 0; firstSeenAt: null; lastSeenAt: null; threatLevel: "NOT_ENABLED"; evidence: string[] } | null = threatNetConfig.enabled ? null : { enabled: false, matched: false, clusterId: null, similarityScore: 0, reportCount: 0, reportsLast24Hours: 0, reportsLast72Hours: 0, firstSeenAt: null, lastSeenAt: null, threatLevel: "NOT_ENABLED", evidence: [] };
-    try {
-      if (threatNetConfig.enabled) {
-        const result = await analyzeThreatNet({ text: threatText, company, jobRole, website, phone, notificationNumber });
-        threatIntelligence = result ? { enabled: true, ...result } : { enabled: true, matched: false, clusterId: null, similarityScore: 0, reportCount: 0, reportsLast24Hours: 0, reportsLast72Hours: 0, firstSeenAt: null, lastSeenAt: null, threatLevel: "NO_MATCH", evidence: [] };
-      }
-    } catch (error) {
-      console.error("[ThreatNet] Integration unavailable:", error instanceof Error ? error.message : "Unknown error");
-    }
     let aiExplanation = "";
     try {
       const explanationResponse = await groq.chat.completions.create({
@@ -145,6 +208,8 @@ export async function POST(req: Request) {
               negativeSignals: evidence.negativeSignals,
               missingSignals: evidence.missingSignals,
               riskScore: evidence.riskScore,
+              riskStatus,
+              riskAssessment,
               verificationConfidence: evidence.verificationConfidence,
               sourceConfidence: evidence.sourceConfidence,
               evidenceCoverage: evidence.evidenceCoverage,
@@ -168,6 +233,7 @@ export async function POST(req: Request) {
       userId: userId || "demo-user", company: company || "", jobRole: jobRole || "",
       trustScore: evidence.trustScore, status: verdict, layers, website: website || "",
       email: email || "", phone: phone || "", salary: salary || "",
+      riskStatus, riskAssessment,
       notificationNumber: notificationNumber || "", applicationFee: applicationFee || "",
       education: education || "", description: description || "",
       sourceType: evidence.sourceType, riskScore: evidence.riskScore,
@@ -211,6 +277,7 @@ export async function POST(req: Request) {
       success: true, trustScore: evidence.trustScore, verdict, layers, unlockedBadges,
       verificationId: String(savedVerification._id),
       riskScore: evidence.riskScore, verificationConfidence: evidence.verificationConfidence,
+      riskStatus, riskAssessment,
       sourceConfidence: evidence.sourceConfidence, sourceType: evidence.sourceType,
       evidenceCoverage: evidence.evidenceCoverage, evidence: evidence.evidence,
       paymentFraudDetection,

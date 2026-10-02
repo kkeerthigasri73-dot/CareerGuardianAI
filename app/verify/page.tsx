@@ -15,6 +15,9 @@ import RecordingEvidencePanel from "@/components/analyze/RecordingEvidencePanel"
 import PaymentFraudLayer from "@/components/analyze/PaymentFraudLayer";
 import GovernmentRegistryPanel from "@/components/analyze/GovernmentRegistryPanel";
 import DocumentProvenancePanel from "@/components/analyze/DocumentProvenancePanel";
+import VerificationSummary from "@/components/analyze/VerificationSummary";
+import LinkSentinelPanel from "@/components/analyze/LinkSentinelPanel";
+import ThreatNetPanel from "@/components/analyze/ThreatNetPanel";
 import { extractDocumentFacts, type DocumentProvenance } from "@/lib/documentProvenance";
 import { inspectUploadedDocument, renderPdfPagesForOcr } from "@/lib/documentProvenanceClient";
 
@@ -481,29 +484,34 @@ export default function VerifyPage() {
             <>
               {recording && <RecordingEvidencePanel recording={recording} caseId={verification.verificationId || "Local case"} />}
               {verification.verdict === "HIGH RISK" && <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5"><p className="font-semibold text-red-900">This assessment contains high-risk evidence.</p><Link href="/emergency" className="mt-3 inline-flex items-center gap-2 rounded-xl bg-red-700 px-4 py-2.5 font-semibold text-white hover:bg-red-800">Open Guardian Recovery <ArrowRight className="h-4 w-4" /></Link></div>}
-              <div className="mt-10">
-                <ExtractedInfo
-                  data={{
-                    ...result,
-                    verification,
-                  }}
-                />
-              </div>
+              <VerificationSummary verification={verification} extracted={result} />
 
-              <PaymentFraudLayer result={verification.paymentFraudDetection} />
+              <section aria-labelledby="government-recruitment-verification-title" className="mt-8 space-y-4">
+                <h2 id="government-recruitment-verification-title" className="text-xl font-bold text-slate-900">Government Recruitment Verification</h2>
+                {verification.documentProvenance && <DocumentProvenancePanel result={verification.documentProvenance} payment={verification.paymentFraudDetection} />}
+                <GovernmentRegistryPanel result={verification.governmentVerification} />
+                <LinkSentinelPanel result={verification.linkSentinel} />
+                <PaymentFraudLayer result={verification.paymentFraudDetection} />
+              </section>
 
-              <GovernmentRegistryPanel result={verification.governmentVerification} />
+              <section aria-labelledby="threat-intelligence-title" className="mt-8">
+                <h2 id="threat-intelligence-title" className="mb-3 text-xl font-bold text-slate-900">Threat Intelligence</h2>
+                <ThreatNetPanel result={verification.threatIntelligence} />
+              </section>
 
-              <DocumentProvenancePanel result={verification.documentProvenance} payment={verification.paymentFraudDetection} />
+              <details className="mt-8 rounded-xl border border-slate-200 bg-white p-4">
+                <summary className="cursor-pointer font-semibold text-slate-800">Supporting Verification · Existing 12-Layer Analysis</summary>
+                <div className="mt-4">
+                  <TrustEngine data={{ ...result, verification }} />
+                </div>
+              </details>
 
-              <div className="mt-10">
-                <TrustEngine
-                  data={{
-                    ...result,
-                    verification,
-                  }}
-                />
-              </div>
+              <details className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+                <summary className="cursor-pointer font-semibold text-slate-800">Investigation Report · Extracted Fields and Source Evidence</summary>
+                <div className="mt-4">
+                  <ExtractedInfo data={{ ...result, verification }} />
+                </div>
+              </details>
 
               {/* Badge Unlocked */}
 
